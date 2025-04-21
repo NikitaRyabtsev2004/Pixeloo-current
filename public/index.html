@@ -1,0 +1,104 @@
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Welcome to the Pixeloo!" />
+    
+     <!-- Regional Meta Tags -->
+    <meta name="yandex" content="ru" />
+    <meta name="google" content="ru" />
+    <meta name="geo.region" content="RU-MOW" />
+    <meta name="geo.placename" content="Moscow" />
+    
+    <!-- Favicon -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="16x16 32x32 64x64" />
+    <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icon192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Pixeloo" />
+    <meta property="og:description" content="Welcome to the Pixeloo!" />
+    <meta property="og:image" content="%PUBLIC_URL%/icon512.svg" />
+    <meta property="og:url" content="https://pixeloo.ru" />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pixeloo" />
+    <meta name="twitter:description" content="Welcome to the Pixeloo!" />
+    <meta name="twitter:image" content="%PUBLIC_URL%/icon512.svg" />
+
+    <!-- SEO Meta Tags -->
+    <meta name="robots" content="index, follow" />
+    <meta
+      name="keywords"
+      content="Pixeloo, рисовать, искусство, веб, графика, игра, game, pixeloo, pixelart, art, пиксель, пиксельарт, картина, картинка"
+    />
+
+    <title>🐱Pixeloo❤️</title>
+
+    <!-- Custom Script for Changing Title -->
+   <!--  <script>
+     document.addEventListener('DOMContentLoaded', function () {
+       const baseTitle1 = '🐱';
+       const baseTitle2 = '❤️';
+       const frames = [
+         'Pixeloo',
+         'Pixeloo',
+         'Pixeloo',
+         'Pixeloo',
+       ];
+       let currentIndex = 0;
+   
+       function updateTitle() {
+         document.title = `${baseTitle1} ${frames[currentIndex]} ${baseTitle2}`;
+         currentIndex = (currentIndex + 1) % frames.length;
+       }
+   
+       setInterval(updateTitle, 300);
+     });
+   </script> -->
+  </head>
+  <body>
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+      (function (m, e, t, r, i, k, a) {
+        m[i] =
+          m[i] ||
+          function () {
+            (m[i].a = m[i].a || []).push(arguments);
+          };
+        m[i].l = 1 * new Date();
+        for (var j = 0; j < document.scripts.length; j++) {
+          if (document.scripts[j].src === r) {
+            return;
+          }
+        }
+        (k = e.createElement(t)),
+          (a = e.getElementsByTagName(t)[0]),
+          (k.async = 1),
+          (k.src = r),
+          a.parentNode.insertBefore(k, a);
+      })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+
+      ym(99155538, 'init', {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true,
+      });
+    </script>
+    <noscript>
+      <div>
+        <img
+          src="https://mc.yandex.ru/watch/99155538"
+          style="position: absolute; left: -9999px"
+          alt=""
+        />
+      </div>
+    </noscript>
+    <!-- /Yandex.Metrika counter -->
+    <div id="root"></div>
+  </body>
+</html>

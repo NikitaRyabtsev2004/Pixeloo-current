@@ -1,0 +1,9 @@
+User-agent: *
+Sitemap: https://pixeloo.ru/sitemap.xml
+Disallow: /admin/
+Disallow: /private/
+Disallow: /cgi-bin/
+Allow: /
+Allow: /canvas-1
+Allow: /canvas-2
+Allow: /canvas-3

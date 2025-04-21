@@ -1,0 +1,188 @@
+.Intro {
+    z-index: 10000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+.intro {
+    background: #000000;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
+    animation: app-anim forwards 5s;
+    overflow: hidden;
+}
+
+.intro.fade {
+    animation: app-fade 5s ease-in-out infinite, app-fade-flicker 1s ease-in-out infinite;
+}
+
+.fade-out {
+    animation: fadeOut 1s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+.shape__square {
+    top: 0;
+    width: 100px;
+    height: 100px;
+    border: 25px solid #ffffff;
+    border-radius: 0%;
+    position: absolute;
+    animation: circle-anim 5s forwards, circle-rotate 8s infinite;
+    transition: all 500ms ease-in-out;
+    align-content: center;
+    color: #000000;
+    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+    transform-style: preserve-3d;
+    transform: perspective(500px) rotateY(0deg);
+    transform: rotateZ(100deg);
+    z-index: 9999;
+    &:hover {
+        transform: scale(1.2);
+        box-shadow: 0 0 20px 20px #ffffff4b, 0 0 20px 20px #ffffff4b inset;
+    }
+}
+
+.number__overlay {
+    position: absolute;
+    z-index: 9998;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.random__number {
+    font-family: "Pixelify Sans", sans-serif;
+    position: absolute;
+    font-size: 46px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.7);
+    animation: fadeInOut 3s forwards;
+}
+
+@keyframes circle-rotate {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 20px 20px #ffffff4b, 0 0 20px 20px #ffffff4b inset;
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes circle-anim {
+    0% {
+        top: -50px;
+        width: 20px;
+        height: 20px;
+        border: 25px solid #ffffff;
+        color: #ffffff;
+    }
+
+    25% {
+        background: #000000;
+        border: 25px solid #ffffff;
+        color: #ffffff;
+    }
+
+    35% {
+        background: #ffffff;
+        color: #000000;
+        border: 50px solid #000000;
+    }
+
+    50% {
+        background: #000000;
+        border: 25px solid #ffffff;
+        top: 40%;
+        width: 150px;
+        height: 150px;
+        color: #ffffff;
+    }
+
+    100% {
+        background: #000000;
+        border: 25px solid #ffffff;
+        top: 40%;
+        width: 150px;
+        height: 150px;
+        color: #ffffff;
+    }
+}
+
+@keyframes app-anim {
+    0% {
+        background-color: #000000;
+    }
+
+    25% {
+        background-color: #000000;
+    }
+
+    35% {
+        background-color: #ffffff;
+    }
+
+    50% {
+        background-color: #000000;
+    }
+
+    100% {
+        background-color: #000000;
+    }
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+
+@keyframes main-anim {
+    0% {
+        background-color: #ffffff;
+    }
+
+    100% {
+        background-color: #a1a1a1;
+    }
+}
