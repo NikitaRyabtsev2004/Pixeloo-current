@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+// const crypto = require('crypto');
 const { logger } = require('../utils/libs/logger.cjs');
 const dbB1 = require('../database/dbB1Setup.cjs');
 const dbB2 = require('../database/dbB2Setup.cjs');
@@ -26,7 +26,7 @@ module.exports = function (io) {
       id: gameId,
       serverId,
       players: [],
-      playerSockets: {}, // Хранение сокетов игроков
+      playerSockets: {},
       playerIndices: {},
       state: 'waiting',
       word,
@@ -59,13 +59,11 @@ module.exports = function (io) {
     }
     if (!game.players.includes(playerId)) {
       game.players.push(playerId);
-      // Сохраняем сокет для игрока
       game.playerSockets[playerId] = socket;
       const index = game.players.length;
       game.playerIndices[playerId] = index;
       console.log(`Игрок ${playerId} добавлен в игру ${gameId} с сокетом ${socket.id}`);
     }
-    // Рассылаем всем игрокам актуальное состояние игры:
     game.players.forEach((pId) => {
       const playerSocket = game.playerSockets[pId];
       if (playerSocket) {
@@ -79,7 +77,6 @@ module.exports = function (io) {
     });
     io.to('battle-lobby').emit('battle-games', getAvailableGames());
   
-    // Если игроков достаточно для запуска, запускаем отсчёт
     if (game.players.length === 2) {
       console.log(`Игра ${gameId}: запускаем отсчет. Игроки: ${game.players.join(', ')}`);
       startCountdown(gameId);
@@ -94,7 +91,7 @@ module.exports = function (io) {
     const index = game.players.indexOf(playerId);
     if (index !== -1) {
       game.players.splice(index, 1);
-      delete game.playerSockets[playerId]; // Удаляем сокет игрока
+      delete game.playerSockets[playerId];
       delete game.playerIndices[playerId];
       if (process.env.NODE_ENV !== 'production') {
         logger.info(`Игрок ${playerId} покинул игру ${gameId}`);
@@ -126,7 +123,6 @@ module.exports = function (io) {
       let timeLeft = 10;
       game.countdown = timeLeft;
 
-      // Отправляем состояние всем игрокам
       game.players.forEach((playerId) => {
         const socket = game.playerSockets[playerId];
         if (socket) {
@@ -143,7 +139,6 @@ module.exports = function (io) {
         timeLeft -= 1;
         game.countdown = timeLeft;
 
-        // Обновляем состояние для всех игроков
         game.players.forEach((playerId) => {
           const socket = game.playerSockets[playerId];
           if (socket) {
@@ -160,7 +155,6 @@ module.exports = function (io) {
           console.log(`"timer left game start" - ${gameId}`);
           console.log(`Игроки в игре ${gameId}:`, game.players);
 
-          // Проверяем активные сокеты
           const activeSockets = game.players.filter((playerId) => {
             const socket = game.playerSockets[playerId];
             return socket && socket.connected;
@@ -336,7 +330,7 @@ module.exports = function (io) {
         game.countdown = null;
         game.timer = null;
         game.scores = {};
-        game.word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]; // Новый случайный термин
+        game.word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
         clearCanvases(gameId);
         io.to(`game_${gameId}`).emit('game-reset', { gameId });
         io.to('battle-lobby').emit('battle-games', getAvailableGames());
@@ -386,7 +380,6 @@ module.exports = function (io) {
     }
   }
 
-  // --- Save pixel drawn by a player ---
   function savePixel(gameId, playerId, x, y, color) {
     const game = games[gameId];
     if (!game || game.state !== 'drawing') return;
@@ -403,7 +396,6 @@ module.exports = function (io) {
     );
   }
 
-  // --- Load a player's canvas data for evaluation ---
   function loadCanvas(gameId, playerId, callback) {
     const game = games[gameId];
     if (!game) return;

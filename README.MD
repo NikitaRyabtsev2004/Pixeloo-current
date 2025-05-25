@@ -54,11 +54,11 @@ openssl req -new -key key.pem -out cert.pem
 
 7. Запуск клиента:
 
-npm run start
+npm run start:site
 
 8. Запуск сервера:
 
-npm run start-s-loop
+npm run start:server
 
 ## Лицензия
 
@@ -80,3 +80,6 @@ nekita118118@gmail.com
 
 - **Версия**: 0.1.0
 - **Дата релиза**: 07 декабря 2024 года
+
+- **Версия**: 0.2.0
+- **Дата релиза**: 20 мая 2025 года

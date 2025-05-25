@@ -16,13 +16,11 @@ const {
   getUsernameData,
   getBattleCanvasStatus,
 } = require('../database/dbQueries.cjs');
-const moment = require('moment');
 const {
   checkAndEmitPixelStatus,
 } = require('../utils/pixel/checkAndEmitPixelStatus.cjs');
 const db = require('../database/dbSetup.cjs');
 
-// Функция принимает battleManager как параметр
 function handleSocketEvents(socket, io, onlineUsers, battleManager) {
   let uniqueIdentifier = socket.handshake.auth.uniqueIdentifier;
   let currentRoute;
