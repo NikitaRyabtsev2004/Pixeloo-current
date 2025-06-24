@@ -19,29 +19,29 @@ const WORD_LIST = [
 const serverDbs = { b1: dbB1, b2: dbB2, b3: dbB3, b4: dbB4, b5: dbB5 };
 
 module.exports = function (io) {
-  function createGame(serverId = 'b1') {
-    const gameId = crypto.randomBytes(8).toString('hex');
-    const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
-    games[gameId] = {
-      id: gameId,
-      serverId,
-      players: [],
-      playerSockets: {},
-      playerIndices: {},
-      state: 'waiting',
-      word,
-      countdown: null,
-      timer: null,
-      drawingTime: 1 * 30 * 1000,
-      evaluationTimeout: 2 * 1000,
-      scores: {},
-    };
-    createGameTables(gameId);
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info(`Игра создана: ID=${gameId}, serverId=${serverId}`);
-    }
-    return gameId;
-  }
+  // function createGame(serverId = 'b1') {
+  //   const gameId = crypto.randomBytes(8).toString('hex');
+  //   const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+  //   games[gameId] = {
+  //     id: gameId,
+  //     serverId,
+  //     players: [],
+  //     playerSockets: {},
+  //     playerIndices: {},
+  //     state: 'waiting',
+  //     word,
+  //     countdown: null,
+  //     timer: null,
+  //     drawingTime: 1 * 30 * 1000,
+  //     evaluationTimeout: 2 * 1000,
+  //     scores: {},
+  //   };
+  //   createGameTables(gameId);
+  //   if (process.env.NODE_ENV !== 'production') {
+  //     logger.info(`Игра создана: ID=${gameId}, serverId=${serverId}`);
+  //   }
+  //   return gameId;
+  // }
 
   function joinGame(gameId, playerId, socket) {
     const game = games[gameId];
@@ -355,30 +355,30 @@ module.exports = function (io) {
     }
   }
 
-  function createGameTables(gameId) {
-    const game = games[gameId];
-    if (!game) return;
-    const db = serverDbs[game.serverId];
-    for (let i = 1; i <= 8; i++) {
-      const tableName = `P${i}_${gameId}`;
-      db.run(
-        `CREATE TABLE IF NOT EXISTS ${tableName} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          x INTEGER,
-          y INTEGER,
-          color TEXT,
-          userId TEXT,
-          UNIQUE(x, y)
-        )`,
-        (err) => {
-          if (err)
-            logger.error(
-              `Ошибка создания таблицы ${tableName}: ${err.message}`
-            );
-        }
-      );
-    }
-  }
+  // function createGameTables(gameId) {
+  //   const game = games[gameId];
+  //   if (!game) return;
+  //   const db = serverDbs[game.serverId];
+  //   for (let i = 1; i <= 8; i++) {
+  //     const tableName = `P${i}_${gameId}`;
+  //     db.run(
+  //       `CREATE TABLE IF NOT EXISTS ${tableName} (
+  //         id INTEGER PRIMARY KEY AUTOINCREMENT,
+  //         x INTEGER,
+  //         y INTEGER,
+  //         color TEXT,
+  //         userId TEXT,
+  //         UNIQUE(x, y)
+  //       )`,
+  //       (err) => {
+  //         if (err)
+  //           logger.error(
+  //             `Ошибка создания таблицы ${tableName}: ${err.message}`
+  //           );
+  //       }
+  //     );
+  //   }
+  // }
 
   function savePixel(gameId, playerId, x, y, color) {
     const game = games[gameId];
@@ -423,7 +423,7 @@ module.exports = function (io) {
   }
 
   return {
-    createGame,
+    // createGame,
     joinGame,
     leaveGame,
     games,

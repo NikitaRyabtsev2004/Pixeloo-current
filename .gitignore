@@ -19,3 +19,4 @@ build
 .vscode
 prod
 .prettierrc
+file_sizes.txt

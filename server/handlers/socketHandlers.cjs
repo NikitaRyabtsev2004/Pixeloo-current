@@ -109,7 +109,7 @@ function handleSocketEvents(socket, io, onlineUsers, battleManager) {
             }
           }
         );
-        socket.emit('access-granted', { gameId }); // Подтверждаем доступ
+        socket.emit('access-granted', { gameId });
       } else {
         console.log(`Игрок ${playerId} не найден в игре ${gameId}`);
         socket.emit('access-denied', { message: 'Вы не участник этой игры' });
@@ -202,11 +202,11 @@ function handleSocketEvents(socket, io, onlineUsers, battleManager) {
     socket.emit('battle-games', availableGames);
   });
 
-  socket.on('create-battle-game', (data) => {
-    const { serverId } = data || {};
-    const gameId = battleManager.createGame(serverId);
-    socket.emit('game-created', { gameId, serverId });
-  });
+  // socket.on('create-battle-game', (data) => {
+  //   const { serverId } = data || {};
+  //   const gameId = battleManager.createGame(serverId);
+  //   socket.emit('game-created', { gameId, serverId });
+  // });
 
   socket.on('join-battle-game', (data) => {
     const { gameId } = data;

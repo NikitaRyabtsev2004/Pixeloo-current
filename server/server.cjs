@@ -42,10 +42,10 @@ moment.locale('ru');
 
   let onlineUsers = {};
 
-  for (let i = 1; i <= 5; i++) {
-    battleManager.createGame(`b${i}`);
-  }
-  logger.info('Игры инициализированы:', JSON.stringify(battleManager.games, null, 2));
+  // for (let i = 1; i <= 5; i++) {
+  //   battleManager.createGame(`b${i}`);
+  // }
+  // logger.info('Игры инициализированы:', JSON.stringify(battleManager.games, null, 2));
 
   const initiateServer = (port) => {
     let server = http.createServer(app);
