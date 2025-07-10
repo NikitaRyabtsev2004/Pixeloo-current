@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useSettings } from '../../../../../../hooks/useSettings';
 import { playSound } from '../../../../../../utils/functions/sounds/sounds';
 
@@ -7,7 +7,7 @@ const IntroSwitch = () => {
     const savedValue = localStorage.getItem('intro');
     return savedValue ? savedValue === 'true' : true;
   });
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   const handleCheckboxClick = () => {
     setIsChecked((prev) => {

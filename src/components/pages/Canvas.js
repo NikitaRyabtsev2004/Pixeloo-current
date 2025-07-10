@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import useNotifications from '../../utils/helpers/notifications';
 import PropTypes from 'prop-types';
 import {
   PIXEL_SIZE,
-  GRID_HEIGHT,
-  GRID_WIDTH,
-  GRID_WIDTH_BATTLE,
-  GRID_HEIGHT_BATTLE,
+  S1_GRID_HEIGHT,
+  S1_GRID_WIDTH,
+  S2_GRID_HEIGHT,
+  S2_GRID_WIDTH,
+  S3_GRID_HEIGHT,
+  S3_GRID_WIDTH,
+  SINGLEPLAYER_GRID_HEIGHT,
+  SINGLEPLAYER_GRID_WIDTH,
 } from '../../utils/config/canvas-size';
 import config from '../../utils/config/config';
 import { addRecentColor } from '../../redux/slices/recentColorsSlice';
@@ -44,13 +48,16 @@ import AchievementShow from '../ui/ui_components/Achievements/AchievementShow.js
 import { useAchievements } from '../../hooks/useAchievements.js';
 import NotificationModal from '../modal/NotificationModal.jsx';
 import BattleGameModal from '../modal/BattleGameModal.jsx';
-import ServersMenu from '../ui/ServersMenu.jsx';
-
-let socket;
+import ServersMenu from '../modal/ServersModal.jsx';
+import { useCanvasSize } from '../../hooks/useCanvasSize.js';
+import { API_URL } from '../../utils/helpers/constants';
+import { logout } from '../../redux/slices/authSlice.js';
 
 const Canvas = ({ isAuthenticated }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
+  const { isSoundsOn } = useSettings();
   const serverNumber =
     location.pathname === '/single-player-game'
       ? 'single'
@@ -58,7 +65,7 @@ const Canvas = ({ isAuthenticated }) => {
   let dirtyPixels = [];
   const [pixels, setPixels] = useState([]);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [userCount, setUserCount] = useState(0);
+  const [userCount, setUserCount] = useState({ totalUsers: 0, totalConnections: 0 });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -67,7 +74,7 @@ const Canvas = ({ isAuthenticated }) => {
   const [remainingTime, setRemainingTime] = useState(0);
   const [pixelCount, setPixelCount] = useState(0);
   const [hasNoMorePixels, setHasNoMorePixels] = useState(false);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState('connecting');
   const [lastCheckTime, setLastCheckTime] = useState(Date.now());
   const [maxPixelCount, setMaxPixelCount] = useState();
   const [DBmaxPixelCount, DBsetMaxPixelCount] = useState(100);
@@ -83,13 +90,13 @@ const Canvas = ({ isAuthenticated }) => {
   const [hoveredPixelColor, setHoveredPixelColor] = useState(null);
   const recentColors = useSelector((state) => state.recentColors.recentColors);
   const showControlPanel = useSelector((state) => state.ui.showControlPanel);
-  const dispatch = useDispatch();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const socketRef = useRef(null); // Храним сокет в useRef
   const [canvasWidth, setCanvasWidth] = useState(window.innerWidth);
   const [canvasHeight, setCanvasHeight] = useState(window.innerHeight);
   const [chunks, setChunks] = useState(new Map());
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isHudOpen } = useSettings();
   const [imageUrl, setImageUrl] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const {
@@ -103,23 +110,8 @@ const Canvas = ({ isAuthenticated }) => {
     showDonationError,
   } = useNotifications();
 
-  const { gameId } = useParams(); // Получаем gameId из URL
-  const isBattleMode = location.pathname.startsWith('/battle');
-  const [canvasSize] = useState({
-    width: isBattleMode ? GRID_WIDTH_BATTLE : GRID_WIDTH,
-    height: isBattleMode ? GRID_HEIGHT_BATTLE : GRID_HEIGHT,
-  });
+  const canvasSize = useCanvasSize();
 
-  const [gameState, setGameState] = useState('waiting'); // Состояние игры: waiting, countdown, drawing, evaluation, finished
-  const [word, setWord] = useState(null); // Слово для рисования
-  const [countdown, setCountdown] = useState(null); // Обратный отсчёт до начала
-  const [drawingTime, setDrawingTime] = useState(null); // Время на рисование
-  const [isEvaluating, setIsEvaluating] = useState(false); // Флаг этапа оценки
-  const [currentEvaluation, setCurrentEvaluation] = useState(null); // Данные текущего холста для оценки
-  const [gameResults, setGameResults] = useState(null); // Результаты игры
-  const [isBattleModalOpen, setIsBattleModalOpen] = useState(isBattleMode);
-
-  // update canvas size
   useEffect(() => {
     const updateCanvasSize = () => {
       setCanvasWidth(window.innerWidth);
@@ -155,62 +147,103 @@ const Canvas = ({ isAuthenticated }) => {
     doPayment(
       paymentAmount,
       pixelCount,
-      socket,
+      socketRef.current,
       showDonationAlert,
       showDonationMakeError,
       showDonationSucces,
       showDonationError
     );
 
-  useEffect(() => {
-    if (canvasSize.width > 0 && canvasSize.height > 0) {
-      setPixels(
-        Array(canvasSize.height)
-          .fill(null)
-          .map(() => Array(canvasSize.width).fill('#FFFFFF'))
-      );
+  const refreshToken = useCallback(async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token || !isAuthenticated) return false;
+
+    try {
+      const response = await fetch(`${API_URL}/srv/auth/refresh-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        localStorage.setItem('authToken', result.token);
+        socketRef.current.auth.token = result.token;
+        socketRef.current.emit('update-token', { token: result.token });
+        return true;
+      } else {
+        dispatch(logout({ isSoundsOn }));
+        return false;
+      }
+    } catch (error) {
+      dispatch(logout({ isSoundsOn }));
+      return false;
     }
-  }, [canvasSize]);
+  }, [isAuthenticated, dispatch, isSoundsOn]);
 
   const connectSocket = useCallback(() => {
     let serverUrl;
-    if (isBattleMode) {
-      const serverId = gameId.split('_')[0] || 'b1';
-      serverUrl = config[`serverUrl_${serverId}`];
-    } else if (location.pathname === '/single-player-game') {
+    if (location.pathname === '/single-player-game') {
       serverUrl = config.singlePlayerServerUrl;
     } else {
       serverUrl = config[`serverUrl_${serverNumber}`];
     }
-    socket = io(serverUrl, {
+
+    const token = localStorage.getItem('authToken');
+    const uniqueIdentifier = localStorage.getItem('uniqueIdentifier');
+
+    // Отключаем старый сокет, если он существует
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
+    socketRef.current = io(serverUrl, {
       auth: {
-        token: localStorage.getItem('authToken'),
-        uniqueIdentifier: localStorage.getItem('uniqueIdentifier'),
+        token: token || null,
+        uniqueIdentifier: uniqueIdentifier || null,
       },
+      reconnectionAttempts: 3, // Ограничиваем попытки переподключения
+      reconnectionDelay: 1000,
     });
 
-    socket.on('connect', () => {
-      console.log('Сокет успешно подключен');
-      socket.emit('route', location.pathname); // Отправляем текущий маршрут
+    socketRef.current.on('connect', async () => {
+      setStatus('online');
+      setLastCheckTime(Date.now());
+      socketRef.current.emit('route', location.pathname);
+      if (isAuthenticated) {
+        const tokenRefreshed = await refreshToken();
+        if (!tokenRefreshed) {
+          navigate('/');
+        }
+      }
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Ошибка подключения сокета:', error);
+    socketRef.current.on('connect_error', (error) => {
+      setStatus('offline');
+      setLastCheckTime(Date.now());
+      if (error.message.includes('Authentication error')) {
+        dispatch(logout({ isSoundsOn }));
+      } else {
+        showDisconnectedNotification();
+      }
     });
 
-    const canvasEvent = isBattleMode
-      ? 'battle-canvas-data'
-      : location.pathname === '/single-player-game'
+    socketRef.current.on('access-denied', () => {
+      setStatus('offline');
+      dispatch(logout({ isSoundsOn }));
+    });
+
+    const canvasEvent =
+      location.pathname === '/single-player-game'
         ? 'single-player-canvas-data'
         : `canvas-data-${serverNumber}`;
 
-    const pixelDrawnEvent = isBattleMode
-      ? 'battle-pixel-drawn'
-      : location.pathname === '/single-player-game'
+    const pixelDrawnEvent =
+      location.pathname === '/single-player-game'
         ? 'pixel-drawn-single'
         : `pixel-drawn-${serverNumber}`;
 
-    socket.on(canvasEvent, (data) => {
+    socketRef.current.on(canvasEvent, (data) => {
       const canvasData = Array(canvasSize.height)
         .fill(null)
         .map(() => Array(canvasSize.width).fill('#FFFFFF'));
@@ -222,7 +255,7 @@ const Canvas = ({ isAuthenticated }) => {
       setPixels(canvasData);
     });
 
-    socket.on(pixelDrawnEvent, (pixelData) => {
+    socketRef.current.on(pixelDrawnEvent, (pixelData) => {
       pixelData.forEach(({ x, y, color }) => {
         setPixels((prevPixels) => {
           const newPixels = [...prevPixels];
@@ -237,98 +270,11 @@ const Canvas = ({ isAuthenticated }) => {
       });
     });
 
-    socket.on('battle-canvas-data', (data) => {
-      const canvasData = Array(canvasSize.height)
-        .fill(null)
-        .map(() => Array(canvasSize.width).fill('#FFFFFF'));
-      data.forEach((pixel) => {
-        if (canvasData[pixel.y] && canvasData[pixel.y][pixel.x]) {
-          canvasData[pixel.y][pixel.x] = pixel.color;
-        }
-      });
-      setPixels(canvasData); // Обновляем состояние холста
-    });
-
-    socket.on('battle-pixel-drawn', ({ x, y, color }) => {
-      setPixels((prevPixels) => {
-        const newPixels = [...prevPixels];
-        if (newPixels[y] && newPixels[y][x]) {
-          newPixels[y][x] = color;
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d');
-          drawPixel(ctx, x, y, color, scale, offset);
-        }
-        return newPixels;
-      });
-    });
-
-    const handleUsernameRequest = ({ x, y }, callback) => {
-      if (location.pathname === '/single-player-game') {
-        // Для single-player возвращаем имя текущего пользователя
-        const username = localStorage.getItem('username') || 'Вы';
-        callback({ success: true, username });
-      } else {
-        // Стандартная логика для онлайн-режимов
-        socket.emit('get-username', { x, y }, callback);
-      }
-    };
-
-    const handleColorRequest = ({ x, y }, callback) => {
-      if (location.pathname === '/single-player-game') {
-        // Для single-player проверяем локальное состояние
-        const color = pixels[y]?.[x] || '#FFFFFF';
-        callback({ success: true, color });
-      } else {
-        // Стандартная логика для онлайн-режимов
-        socket.emit('get-pixel-color', { x, y }, callback);
-      }
-    };
-
-    if (isBattleMode) {
-      socket.on('game-state', (data) => {
-        setGameState(data.status);
-        if (data.status === 'waiting' || data.status === 'countdown') {
-          setIsBattleModalOpen(true);
-        } else {
-          setIsBattleModalOpen(false);
-        }
-      });
-
-      socket.on('countdownStarted', (data) => {
-        setCountdown(data.timeLeft);
-      });
-
-      socket.on('startDrawing', (data) => {
-        setWord(data.word);
-        setDrawingTime(data.timeLeft);
-      });
-
-      socket.on('startEvaluation', () => {
-        setIsEvaluating(true);
-      });
-
-      socket.on('evaluateCanvas', (data) => {
-        setCurrentEvaluation({
-          playerId: data.playerId,
-          canvasData: data.canvasData,
-        });
-      });
-
-      socket.on('gameEnd', (data) => {
-        setGameResults({ scores: data.scores, winner: data.winner });
-        setTimeout(() => {
-          window.location.href = '/canvas-1'; // Перенаправление после игры
-        }, 5000);
-      });
-
-      socket.emit('join-game-room', { gameId });
-    }
-
-    socket.on('no-more-pixels', (value) => {
+    socketRef.current.on('no-more-pixels', (value) => {
       setHasNoMorePixels(value);
     });
 
-    socket.on('user-count', (data) => {
+    socketRef.current.on('user-count', (data) => {
       if (
         data &&
         data.totalUsers !== undefined &&
@@ -337,141 +283,174 @@ const Canvas = ({ isAuthenticated }) => {
         setUserCount(data);
       }
     });
-    socket.on('user-pixel-count-update', (data) => {
+
+    socketRef.current.on('user-pixel-count-update', (data) => {
+      if (!isAuthenticated) return;
       setPixelCount(data.newPixelCount);
     });
-    socket.on('user-pixel-count', (data) => {
+
+    socketRef.current.on('user-pixel-count', (data) => {
+      if (!isAuthenticated) return;
       setPixelCount(data.pixelCount);
     });
-    socket.on('connect_error', () => {});
-    
-    socket.emit('client-info', {
-      uniqueIdentifier: localStorage.getItem('uniqueIdentifier'),
+
+    socketRef.current.on('client-info', (data) => {
+      if (!isAuthenticated) return;
+      socketRef.current.emit('client-info', {
+        uniqueIdentifier: localStorage.getItem('uniqueIdentifier'),
+      });
     });
 
-    socket.on('access-denied', (data) => {
-      navigate('/');
-    });
-
-    socket.emit('route', window.location.pathname);
-    if (location.pathname === '/single-player-game') {
-      socket.emit('route', '/single-player-game');
+    socketRef.current.emit('route', window.location.pathname);
+    if (location.pathname === '/single-player-game' && isAuthenticated) {
+      socketRef.current.emit('route', '/single-player-game');
     }
-  }, [
-    isBattleMode,
-    gameId,
-    serverNumber,
-    canvasSize.height,
-    canvasSize.width,
-    navigate,
-  ]);
+  }, [serverNumber, canvasSize, navigate, isAuthenticated, refreshToken, dispatch, isSoundsOn]);
 
   useEffect(() => {
     connectSocket();
-  }, [connectSocket]);
+    const tokenRefreshInterval = setInterval(() => {
+      refreshToken();
+    }, 12 * 60 * 60 * 1000);
 
-  useEffect(() => {
-    socket.on('startGame', (data) => {
-      console.log('startGame received in App.jsx:', data);
-      navigate(`/battle/${data.gameId}`);
-    });
     return () => {
-      socket.off('startGame');
+      clearInterval(tokenRefreshInterval);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
-  });
+  }, [connectSocket, location.pathname, refreshToken]);
 
   useEffect(() => {
-    if (!status && Date.now() - lastCheckTime > 1000) {
-      setStatus('offline');
-    }
-  }, [status, lastCheckTime]);
-
-  useEffect(() => {
-    setInterval(() => {
-      socket.emit('get-max-pixel-count', (data) => {
-        setMaxPixelCount(data.maxPixelCount || Infinity);
-      });
+    const interval = setInterval(() => {
+      if (isAuthenticated && socketRef.current) {
+        socketRef.current.emit('get-max-pixel-count', (data) => {
+          setMaxPixelCount(data.maxPixelCount || Infinity);
+        });
+      }
     }, 5000);
 
-    setInterval(() => {
-      setPixelCount((prevPixelCount) => {
-        if (prevPixelCount < maxPixelCount) {
-          return prevPixelCount + 1;
-        } else {
-          return prevPixelCount;
-        }
-      });
+    const pixelInterval = setInterval(() => {
+      if (isAuthenticated) {
+        setPixelCount((prevPixelCount) => {
+          if (prevPixelCount < maxPixelCount) {
+            return prevPixelCount + 1;
+          } else {
+            return prevPixelCount;
+          }
+        });
+      }
     }, 1000);
-  }, [maxPixelCount]);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(pixelInterval);
+    };
+  }, [maxPixelCount, isAuthenticated]);
 
   useEffect(() => {
     let checkIntervalId;
 
     const checkStatus = async () => {
       try {
-        await socket.emit('check-server-status', (data) => {
-          setStatus(data.status);
-          setLastCheckTime(Date.now());
-        });
+        if (socketRef.current) {
+          await socketRef.current.emit('check-server-status', (data) => {
+            setStatus(data.status);
+            setLastCheckTime(Date.now());
+          });
+        }
       } catch (error) {
         setStatus('offline');
         setLastCheckTime(Date.now());
       }
     };
 
-    socket.on('disconnect', () => {
-      showDisconnectedNotification();
-      setStatus('offline');
-    });
+    if (socketRef.current) {
+      socketRef.current.on('disconnect', () => {
+        setStatus('offline');
+        if (isAuthenticated) {
+          showDisconnectedNotification();
+        }
+      });
 
-    socket.on('connect_error', () => {
-      showAuthenticationRequiredNotification();
-      setStatus('offline');
-    });
+      socketRef.current.on('connect_error', () => {
+        setStatus('offline');
+      });
 
-    socket.on('reconnect', () => {
-      showConnectionRestoredNotification();
-      setStatus('online');
-      checkStatus();
-    });
+      socketRef.current.on('reconnect', () => {
+        showConnectionRestoredNotification();
+        setStatus('online');
+        checkStatus();
+      });
+    }
 
-    checkIntervalId = setInterval(checkStatus, 1000);
+    checkIntervalId = setInterval(checkStatus, 5000);
 
     return () => {
       clearInterval(checkIntervalId);
-      socket.off('disconnect');
-      socket.off('connect_error');
-      socket.off('reconnect');
-    };
-  }, []);
-
-  const handleCanvasClickWrapper = (e) =>
-    handleCanvasClick(e, isDragging, (x, y) => {
-      if (isBattleMode && gameState !== 'drawing') {
-        return; // Нельзя рисовать вне этапа рисования
+      if (socketRef.current) {
+        socketRef.current.off('disconnect');
+        socketRef.current.off('connect_error');
+        socketRef.current.off('reconnect');
       }
-      handlePixelClick(x, y, {
-        isAuthenticated,
-        canDraw,
-        hasNoMorePixels,
-        offset,
-        scale,
-        selectedColor,
-        setCanDraw,
-        setRemainingTime,
-        setPixels,
-        addRecentColor,
-        dirtyPixels,
-        dispatch,
-        socket,
-        PIXEL_SIZE,
-        hoveredPixelColor,
-        pixelCount,
-        showAuthenticationRequiredNotification,
-        showOutOfPixelsNotification,
-        isSoundsOn,
+    };
+  }, [
+    showDisconnectedNotification,
+    showConnectionRestoredNotification,
+    isAuthenticated,
+  ]);
+
+  const handleCanvasClickWrapper = useCallback(
+    (e) => {
+      handleCanvasClick(e, isDragging, (x, y) => {
+        if (!isAuthenticated) {
+          showAuthenticationRequiredNotification();
+          return;
+        }
+        handlePixelClick(x, y, {
+          isAuthenticated,
+          canDraw,
+          hasNoMorePixels,
+          offset,
+          scale,
+          selectedColor,
+          setCanDraw,
+          setRemainingTime,
+          setPixels,
+          addRecentColor,
+          dirtyPixels,
+          dispatch,
+          socket: socketRef.current,
+          PIXEL_SIZE,
+          hoveredPixelColor,
+          pixelCount,
+          showAuthenticationRequiredNotification,
+          showOutOfPixelsNotification,
+          isSoundsOn,
+          canvasSize,
+        });
       });
-    });
+    },
+    [
+      isDragging,
+      isAuthenticated,
+      canDraw,
+      hasNoMorePixels,
+      offset,
+      scale,
+      selectedColor,
+      setCanDraw,
+      setRemainingTime,
+      setPixels,
+      dispatch,
+      socketRef.current, // Добавляем socketRef.current в зависимости
+      hoveredPixelColor,
+      pixelCount,
+      showAuthenticationRequiredNotification,
+      showOutOfPixelsNotification,
+      isSoundsOn,
+    ]
+  );
 
   const handleMouseMove = (e) => {
     if (isDragging) {
@@ -499,7 +478,7 @@ const Canvas = ({ isAuthenticated }) => {
       pixels[y][x] &&
       pixels[y][x] !== '#FFFFFF'
     ) {
-      socket.emit('get-username', { x, y }, (response) => {
+      socketRef.current.emit('get-username', { x, y }, (response) => {
         if (response && response.success) {
           setHoveredUsername(response.username);
         } else {
@@ -507,7 +486,7 @@ const Canvas = ({ isAuthenticated }) => {
         }
       });
 
-      socket.emit('get-pixel-color', { x, y }, (response) => {
+      socketRef.current.emit('get-pixel-color', { x, y }, (response) => {
         if (response && response.success) {
           setHoveredPixelColor(response.color);
         } else {
@@ -520,14 +499,12 @@ const Canvas = ({ isAuthenticated }) => {
     }
   };
 
-  // chunks
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
     const render = (timestamp) => {
-      // get visible chunks
       const visibleChunks = getVisibleChunks(
         offset,
         scale,
@@ -537,7 +514,6 @@ const Canvas = ({ isAuthenticated }) => {
         canvasSize.height
       );
 
-      // chunk update
       setChunks((prevChunks) =>
         updateChunks(prevChunks, visibleChunks, timestamp)
       );
@@ -565,29 +541,34 @@ const Canvas = ({ isAuthenticated }) => {
   }, [pixels, offset, scale, canvasWidth, canvasHeight, canvasSize]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const userIdentifier = localStorage.getItem('uniqueIdentifier');
     if (!userIdentifier) {
       return;
     }
 
-    socket.auth = { uniqueIdentifier: userIdentifier };
-    socket.connect();
+    socketRef.current.emit('client-info', { uniqueIdentifier: userIdentifier });
 
     const handleMaxPixelCountUpdate = ({ maxPixelCount }) => {
       DBsetMaxPixelCount(maxPixelCount);
       setIsSubscribed(maxPixelCount >= 200);
     };
 
-    socket.on('max-pixel-count-update', handleMaxPixelCountUpdate);
+    socketRef.current.on('max-pixel-count-update', handleMaxPixelCountUpdate);
 
     return () => {
-      socket.off('max-pixel-count-update', handleMaxPixelCountUpdate);
+      socketRef.current.off('max-pixel-count-update', handleMaxPixelCountUpdate);
     };
-  }, []);
+  }, [isAuthenticated]);
 
-  useAchievements({ socket });
+  useAchievements({ socket: socketRef.current });
 
   const handleImageUpload = (url) => {
+    if (!isAuthenticated) {
+      showAuthenticationRequiredNotification();
+      return;
+    }
     setImageUrl(url);
     setIsModalOpen(true);
   };
@@ -595,34 +576,6 @@ const Canvas = ({ isAuthenticated }) => {
   const closeModal = () => {
     setIsModalOpen(false);
   };
-
-  useEffect(() => {
-    let timer;
-    if (isBattleMode) {
-      if (countdown > 0) {
-        timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
-      } else if (drawingTime > 0) {
-        timer = setInterval(() => setDrawingTime((prev) => prev - 1), 1000);
-      }
-    }
-    return () => clearInterval(timer);
-  }, [isBattleMode, countdown, drawingTime]);
-
-  useEffect(() => {
-    socket.on('access-granted', (data) => {
-      console.log(`Доступ к игре ${data.gameId} разрешён`);
-      setGameState('countdown'); // Устанавливаем начальное состояние
-    });
-    socket.on('access-denied', (data) => {
-      console.log('Access denied:', data.message);
-      alert(data.message);
-      navigate('/');
-    });
-    return () => {
-      socket.off('access-granted');
-      socket.off('access-denied');
-    };
-  }, [navigate]);
 
   return (
     <div
@@ -633,12 +586,12 @@ const Canvas = ({ isAuthenticated }) => {
         height: '100vh',
       }}
     >
-      <AchievementShow socket={socket} />
+      <AchievementShow socket={socketRef.current} />
       <ServerStatus
         serverNumber={serverNumber}
         status={location.pathname === '/single-player-game' ? 'local' : status}
       />
-      <ServersMenu socket={socket} />
+      <ServersMenu socket={socketRef.current} isAuthenticated={isAuthenticated} />
       <DonationButton
         amount={amount}
         isOpen={isOpen}
@@ -647,47 +600,46 @@ const Canvas = ({ isAuthenticated }) => {
         handleDoPayment={handleDoPayment}
         isAuthenticated={isAuthenticated}
       />
-      {isBattleMode && (
-        <BattleGameModal
-          gameId={gameId}
-          isOpen={isBattleModalOpen}
-          onClose={() => setIsBattleModalOpen(false)}
-        />
-      )}
       {isHudOpen ? (
         <>
           <h3 className="useful-bar">
-            <UserSubscription
-              isAuthenticated={isAuthenticated}
-              isSubscribed={isSubscribed}
-              pixelCount={pixelCount}
-              DBmaxPixelCount={DBmaxPixelCount}
-              setIsOpenSubscription={setIsOpenSubscription}
-            />
-            {socket && (
+            {isAuthenticated && (
+              <UserSubscription
+                isAuthenticated={isAuthenticated}
+                isSubscribed={isSubscribed}
+                pixelCount={pixelCount}
+                DBmaxPixelCount={DBmaxPixelCount}
+                setIsOpenSubscription={setIsOpenSubscription}
+              />
+            )}
+            {isAuthenticated && socketRef.current && (
               <SubscribtionModal
                 isOpenSubscription={isOpenSubscription}
                 setIsOpenSubscription={setIsOpenSubscription}
                 DBmaxPixelCount={DBmaxPixelCount}
-                socket={socket}
+                socket={socketRef.current}
                 doPayment={handleDoPayment}
               />
             )}
             <CoordinateHint
-              hoveredCoordinates={hoveredCoordinates}
-              hoveredUsername={hoveredUsername}
-              hoveredPixelColor={hoveredPixelColor}
+              hoveredCoordinates={
+                status === 'online' ? hoveredCoordinates : { x: null, y: null }
+              }
+              hoveredUsername={status === 'online' ? hoveredUsername : null}
+              hoveredPixelColor={status === 'online' ? hoveredPixelColor : null}
             />
             <div className="User-counter__container">
               <p>Посетителей на сайте: {userCount.totalConnections}</p>
               из них
               <p>Пользователей онлайн: {userCount.totalUsers}</p>
             </div>
-            <PixelStatus
-              canDraw={canDraw}
-              remainingTime={remainingTime}
-              pixelCount={pixelCount}
-            />
+            {isAuthenticated && (
+              <PixelStatus
+                canDraw={canDraw}
+                remainingTime={remainingTime}
+                pixelCount={pixelCount}
+              />
+            )}
           </h3>
         </>
       ) : null}
@@ -703,13 +655,13 @@ const Canvas = ({ isAuthenticated }) => {
         handleMoveLeft={handleMoveLeft}
         handleMoveDown={handleMoveDown}
         handleMoveRight={handleMoveRight}
-        socket={socket}
+        socket={socketRef.current}
         handleImageUpload={handleImageUpload}
         closeModal={closeModal}
         isModalOpen={isModalOpen}
         imageUrl={imageUrl}
+        
       />
-
       <div
         ref={containerRef}
         className="canvas__container"

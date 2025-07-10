@@ -1,11 +1,6 @@
 const db = require('../../database/dbSetup.cjs');
 const { logger } = require('../libs/logger.cjs');
 
-/**
- * Увеличивает количество пикселей для пользователей с неполным лимитом пикселей.
- * @param {Object} io - Экземпляр Socket.IO для отправки обновлений пользователям.
- */
-
 function incrementPixelCount(io) {
   db.all(
     'SELECT id, uniqueIdentifier, pixelCount, maxPixelCount FROM Users WHERE pixelCount < maxPixelCount',
@@ -29,10 +24,13 @@ function incrementPixelCount(io) {
               return;
             }
 
-            io.emit('user-pixel-count-update', {
-              userId: user.id,
-              newPixelCount: newPixelCount,
-            });
+            io.to(`user_${user.uniqueIdentifier}`).emit(
+              'user-pixel-count-update',
+              {
+                userId: user.id,
+                newPixelCount: newPixelCount,
+              }
+            );
             logger.info(
               `Pixel Increment - User: ${user.id} now has ${newPixelCount} pixels`
             );

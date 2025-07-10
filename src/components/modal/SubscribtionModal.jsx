@@ -10,7 +10,7 @@ export const SubscribtionModal = ({
   socket,
   doPayment,
 }) => {
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   if (!isOpenSubscription) return null;
 

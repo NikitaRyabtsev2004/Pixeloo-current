@@ -1,9 +1,9 @@
 import { PIXEL_SIZE } from '../../config/canvas-size';
 import { playSound } from '../sounds/sounds';
 
-const CHUNK_SIZE = 100;
+const CHUNK_SIZE = 25;
 const FADE_DURATION = 1500;
-const BUFFER_CHUNKS = 1;
+const BUFFER_CHUNKS = 0.4;
 
 const getChunkId = (cx, cy) => `${cx},${cy}`;
 
@@ -17,7 +17,6 @@ export const getVisibleChunks = (
 ) => {
   const pixelSizeScaled = PIXEL_SIZE * scale;
 
-  // visible area
   const minX = Math.max(0, Math.floor(-offset.x / pixelSizeScaled));
   const maxX = Math.min(
     gridWidth - 1,
@@ -29,7 +28,6 @@ export const getVisibleChunks = (
     Math.ceil((canvasHeight - offset.y) / pixelSizeScaled)
   );
 
-  // buffer
   const minChunkX = Math.max(0, Math.floor(minX / CHUNK_SIZE) - BUFFER_CHUNKS);
   const maxChunkX = Math.min(
     Math.floor(gridWidth / CHUNK_SIZE),
@@ -50,7 +48,6 @@ export const getVisibleChunks = (
   return visibleChunks;
 };
 
-// generate chunks with vanish
 const drawChunk = (ctx, chunk, canvasData, scale, offset) => {
   const { cx, cy, alpha } = chunk;
   const startX = cx * CHUNK_SIZE;
@@ -63,11 +60,13 @@ const drawChunk = (ctx, chunk, canvasData, scale, offset) => {
   for (let y = startY; y <= endY; y++) {
     for (let x = startX; x <= endX; x++) {
       const color = canvasData[y][x];
+
+      if (color === '#FFFFFF') continue;
+
       const canvasX = Math.round(x * pixelSizeScaled + offset.x);
       const canvasY = Math.round(y * pixelSizeScaled + offset.y);
       const size = Math.round(pixelSizeScaled);
 
-      // pixel visible area check
       if (
         canvasX >= -size &&
         canvasX < ctx.canvas.width &&
@@ -80,14 +79,27 @@ const drawChunk = (ctx, chunk, canvasData, scale, offset) => {
       }
     }
   }
-  ctx.globalAlpha = 1; // Сбрасываем прозрачность
+  ctx.globalAlpha = 1; // Reset transparency
 };
 
-// chunks update
+export const drawGridBorder = (ctx, scale, offset, gridWidth, gridHeight) => {
+  const pixelSizeScaled = PIXEL_SIZE * scale;
+  ctx.globalAlpha = 1;
+
+  const minX = Math.round(offset.x);
+  const minY = Math.round(offset.y);
+  const maxX = Math.round(gridWidth * pixelSizeScaled + offset.x);
+  const maxY = Math.round(gridHeight * pixelSizeScaled + offset.y);
+
+  ctx.beginPath();
+  ctx.rect(minX, minY, maxX - minX, maxY - minY);
+  ctx.stroke();
+};
+
+// Update chunks
 export const updateChunks = (chunks, visibleChunks, timestamp) => {
   const newChunks = new Map();
 
-  // update visible chunks
   visibleChunks.forEach((chunkId) => {
     if (chunks.has(chunkId)) {
       const chunk = chunks.get(chunkId);
@@ -107,7 +119,7 @@ export const updateChunks = (chunks, visibleChunks, timestamp) => {
     }
   });
 
-  // update vanish chunks
+  // Update vanishing chunks
   chunks.forEach((chunk, chunkId) => {
     if (!visibleChunks.has(chunkId)) {
       chunk.alpha = Math.max(
@@ -124,7 +136,7 @@ export const updateChunks = (chunks, visibleChunks, timestamp) => {
   return newChunks;
 };
 
-// generate
+// Draw canvas with chunks, background, and border
 export const drawCanvas = (
   canvasData,
   ctx,
@@ -140,13 +152,27 @@ export const drawCanvas = (
 
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+  const pixelSizeScaled = PIXEL_SIZE * scale;
+  const minX = Math.round(offset.x);
+  const minY = Math.round(offset.y);
+  const maxX = Math.round(gridWidth * pixelSizeScaled + offset.x);
+  const maxY = Math.round(gridHeight * pixelSizeScaled + offset.y);
+
+  ctx.fillStyle = '#ffffff'; 
+  ctx.globalAlpha = 1;
+  ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+
   chunks.forEach((chunk) => {
     drawChunk(ctx, chunk, canvasData, scale, offset);
   });
+
+  drawGridBorder(ctx, scale, offset, gridWidth, gridHeight);
 };
 
-//draw
+// Draw a single pixel
 export const drawPixel = (ctx, x, y, color, scale, offset) => {
+  if (color === '#FFFFFF') return;
+
   const pixelSizeScaled = PIXEL_SIZE * scale;
   const canvasX = Math.round(x * pixelSizeScaled + offset.x);
   const canvasY = Math.round(y * pixelSizeScaled + offset.y);
@@ -155,7 +181,7 @@ export const drawPixel = (ctx, x, y, color, scale, offset) => {
   ctx.fillRect(canvasX, canvasY, size, size);
 };
 
-//in
+// Zoom in
 export const increaseScale = (
   setScale,
   setOffset,
@@ -168,7 +194,7 @@ export const increaseScale = (
     const newScale = currentScale * 1.2;
     const scaleFactor = newScale / currentScale;
     setScale(newScale);
-    playSound(0.15, 'scroll.mp3', isSoundsOn)
+    playSound(0.15, 'scroll.mp3', isSoundsOn);
     setOffset((prevOffset) => ({
       x: Math.round(
         canvasWidth / 2 - scaleFactor * (canvasWidth / 2 - prevOffset.x)
@@ -180,7 +206,7 @@ export const increaseScale = (
   }
 };
 
-//out
+// Zoom out
 export const decreaseScale = (
   setScale,
   setOffset,
@@ -189,11 +215,11 @@ export const decreaseScale = (
   canvasHeight,
   isSoundsOn
 ) => {
-  if (currentScale > 0.2) {
+  if (currentScale > 0.03) {
     const newScale = currentScale / 1.2;
     const scaleFactor = newScale / currentScale;
     setScale(newScale);
-    playSound(0.15, 'scroll.mp3', isSoundsOn)
+    playSound(0.15, 'scroll.mp3', isSoundsOn);
     setOffset((prevOffset) => ({
       x: Math.round(
         canvasWidth / 2 - scaleFactor * (canvasWidth / 2 - prevOffset.x)
@@ -205,22 +231,22 @@ export const decreaseScale = (
   }
 };
 
-// up
+// Move up
 export const moveUp = (setOffset) => {
   setOffset((prevOffset) => ({ ...prevOffset, y: prevOffset.y + 50 }));
 };
 
-// down
+// Move down
 export const moveDown = (setOffset) => {
   setOffset((prevOffset) => ({ ...prevOffset, y: prevOffset.y - 50 }));
 };
 
-// left
+// Move left
 export const moveLeft = (setOffset) => {
   setOffset((prevOffset) => ({ ...prevOffset, x: prevOffset.x + 50 }));
 };
 
-// right
+// Move right
 export const moveRight = (setOffset) => {
   setOffset((prevOffset) => ({ ...prevOffset, x: prevOffset.x - 50 }));
 };

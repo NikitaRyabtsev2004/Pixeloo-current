@@ -33,11 +33,11 @@ async function ioConnection(io, onlineUsers) {
       socket.disconnect();
       return;
     }
-    logger.info(
-      `User Connection - User connected from IP: ${
-        socket.handshake.address
-      } - Total online users: ${onlineUsers} - ${moment().format('LL LTS')}`
-    );
+    //! logger.info(
+    //!  `User Connection - User connected from IP: ${
+    //!     socket.handshake.address
+    //!   } - Total online users: ${onlineUsers} - ${moment().format('LL LTS')}`
+    //! );
     onlineUsers++;
     io.emit('user-count', onlineUsers);
     handleSocketEvents(socket, io, onlineUsers);

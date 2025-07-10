@@ -1,6 +1,8 @@
 const { logger } = require('../utils/libs/logger.cjs');
 const { handlePixelDraw } = require('../utils/pixel/handlePixelDraw.cjs');
 const { sendUserPixelCount } = require('../utils/pixel/sendUserPixelCount.cjs');
+const jwt = require('jsonwebtoken');
+
 const {
   getMaxPixelCount,
   getUserData,
@@ -14,32 +16,159 @@ const {
   getPlacedPixelsCanvas1,
   getUserAchievement,
   getUsernameData,
-  getBattleCanvasStatus,
+  createSinglePlayerTable,
 } = require('../database/dbQueries.cjs');
+
 const {
   checkAndEmitPixelStatus,
 } = require('../utils/pixel/checkAndEmitPixelStatus.cjs');
+
 const db = require('../database/dbSetup.cjs');
 
-function handleSocketEvents(socket, io, onlineUsers, battleManager) {
-  let uniqueIdentifier = socket.handshake.auth.uniqueIdentifier;
+//! const {
+//!   incrementPixelCount,
+//! } = require('../utils/pixel/incrementPixelCount.cjs');
+
+function handleSocketEvents(socket, io, onlineUsers) {
+  let uniqueIdentifier = socket.handshake.auth.uniqueIdentifier || 'guest';
   let currentRoute;
+  let updateIntervalId = null;
+
+  if (!socket.user) {
+    socket.user = { isGuest: true };
+    // ? logger.warn('socket.user was undefined, set to guest');
+  }
+
+  if (socket.handshake.auth.token && socket.handshake.auth.uniqueIdentifier) {
+    db.get(
+      'SELECT * FROM Users WHERE uniqueIdentifier = ? AND authToken = ? AND authTokenExpires > ?',
+      [socket.handshake.auth.uniqueIdentifier, socket.handshake.auth.token, Date.now()],
+      (err, user) => {
+        if (err || !user) {
+          socket.user = { isGuest: true };
+          socket.emit('access-denied', { message: 'Недействительный токен или сессия истекла.' });
+          return;
+        }
+
+        jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET, (err) => {
+          if (err) {
+            socket.user = { isGuest: true };
+            socket.emit('access-denied', { message: 'Токен истек.' });
+            return;
+          }
+          socket.user.isGuest = false;
+        });
+      }
+    );
+  }
+
+  socket.on('update-token', ({ token }) => {
+    if (socket.handshake.auth.uniqueIdentifier) {
+      db.get(
+        'SELECT * FROM Users WHERE uniqueIdentifier = ? AND authTokenExpires > ?',
+        [socket.handshake.auth.uniqueIdentifier, Date.now()],
+        (err, user) => {
+          if (err || !user) {
+            socket.emit('access-denied', { message: 'Сессия истекла.' });
+            return;
+          }
+          jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err || decoded.uniqueIdentifier !== socket.handshake.auth.uniqueIdentifier) {
+              socket.emit('access-denied', { message: 'Недействительный токен.' });
+              return;
+            }
+            socket.handshake.auth.token = token;
+            socket.user.isGuest = false;
+            //? logger.info(`Token updated for user ${socket.handshake.auth.uniqueIdentifier}`);
+          });
+        }
+      );
+    }
+  });
 
   socket.emit('server-status', { status: 'online' });
 
-  setInterval(() => {
-    checkAndEmitPixelStatus(socket, uniqueIdentifier);
-    getMaxPixelCount(uniqueIdentifier, socket);
-  }, 5000);
+  socket.on('client-info', (data) => {
+    if (socket.user.isGuest) {
+      // ? logger.info('Guest user connected, skipping client-info processing');
+      return;
+    }
+
+    uniqueIdentifier = data.uniqueIdentifier;
+
+    createSinglePlayerTable(uniqueIdentifier, (result) => {
+      if (!result.success) {
+        logger.error(
+          `Failed to create single-player table for ${uniqueIdentifier}: ${result.message}`
+        );
+      }
+    });
+
+    getUserData(uniqueIdentifier, socket);
+    sendUserPixelCount(socket, uniqueIdentifier);
+
+    if (updateIntervalId) {
+      clearInterval(updateIntervalId);
+      updateIntervalId = null;
+    }
+
+    db.get(
+      'SELECT id, uniqueIdentifier, pixelCount, maxPixelCount, userPixelUpdateTime FROM Users WHERE uniqueIdentifier = ?',
+      [uniqueIdentifier],
+      (err, user) => {
+        if (err) {
+          logger.error(`Database error in client-info: ${err.message}`);
+          return;
+        }
+
+        const updateTime =
+          user && user.userPixelUpdateTime > 0
+            ? user.userPixelUpdateTime * 1000
+            : 5000;
+
+        updateIntervalId = setInterval(() => {
+          if (user) {
+            checkAndEmitPixelStatus(socket, uniqueIdentifier);
+            getMaxPixelCount(uniqueIdentifier, socket);
+            sendUserPixelCount(socket, uniqueIdentifier);
+            io.emit('user-count', {
+              totalUsers: Object.keys(onlineUsers).length || 0,
+              totalConnections: Object.values(onlineUsers).reduce(
+                (total, connections) => total + (connections?.length || 0),
+                0
+              ) || 0,
+            });
+          }
+        }, updateTime);
+      }
+    );
+  });
 
   socket.on('check-server-status', (callback) => {
     callback({ status: 'online' });
   });
 
-  socket.on('client-info', (data) => {
-    uniqueIdentifier = data.uniqueIdentifier;
-    getUserData(uniqueIdentifier, socket);
-    sendUserPixelCount(socket, uniqueIdentifier);
+  socket.on('disconnect', () => {
+    if (updateIntervalId) {
+      clearInterval(updateIntervalId);
+      updateIntervalId = null;
+    }
+    // Отправляем user-count при отключении
+    io.emit('user-count', {
+      totalUsers: Object.keys(onlineUsers).length || 0,
+      totalConnections: Object.values(onlineUsers).reduce(
+        (total, connections) => total + (connections?.length || 0),
+        0
+      ) || 0,
+    });
+  });
+
+  socket.on('join-room', (room) => {
+    socket.join(room);
+  });
+
+  socket.on('leave-room', (room) => {
+    socket.leave(room);
   });
 
   const getTableName = (route, uniqueIdentifier) => {
@@ -57,6 +186,47 @@ function handleSocketEvents(socket, io, onlineUsers, battleManager) {
     }
   };
 
+  socket.on('route', (route) => {
+    currentRoute = route;
+
+    socket.rooms.forEach((room) => {
+      if (room !== socket.id) socket.leave(room);
+    });
+
+    let roomName;
+    if (route === '/single-player-game') {
+      if (!socket.user.isGuest) {
+        roomName = `single_${uniqueIdentifier}`;
+        socket.join(roomName);
+      }
+      const canvasName = getTableName(route, uniqueIdentifier);
+      if (canvasName) {
+        getCanvasStatus(canvasName, socket, route);
+      }
+    } else {
+      roomName =
+        route === '/canvas-1'
+          ? 'canvas1'
+          : route === '/canvas-2'
+            ? 'canvas2'
+            : route === '/canvas-3'
+              ? 'canvas3'
+              : 'canvas1';
+      socket.join(roomName);
+
+      const canvasName = getTableName(route, uniqueIdentifier);
+      if (canvasName) {
+        getCanvasStatus(canvasName, socket, route);
+      }
+    }
+
+    socket.emit('route-access-granted', {
+      route,
+      status: 'access-granted',
+      message: 'Route accessible',
+    });
+  });
+
   socket.on('get-username', (data, callback) => {
     const { x, y } = data;
     const tableName = getTableName(currentRoute, uniqueIdentifier);
@@ -69,224 +239,117 @@ function handleSocketEvents(socket, io, onlineUsers, battleManager) {
     getPixelColor(tableName, callback, x, y);
   });
 
-  socket.on('route', (route) => {
-    currentRoute = route;
-    if (route.startsWith('/battle/')) {
-      const gameId = route.split('/')[2];
-      const game = battleManager.games[gameId];
-      const playerId = uniqueIdentifier;
-      console.log(`Попытка подключения к игре ${gameId} игроком ${playerId}, сокет: ${socket.id}`);
-      if (game && game.players.includes(playerId)) {
-        game.playerSockets = game.playerSockets || {};
-        game.playerSockets[playerId] = socket;
-        console.log(`Сокет ${socket.id} обновлён для игрока ${playerId} в игре ${gameId}`);
-        
-        const playerIndex = game.players.indexOf(playerId) + 1;
-        const tableName = `P${playerIndex}_${gameId}`;
-        
-        db.get(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-          [tableName],
-          (err, row) => {
-            if (err) {
-              logger.error(`Ошибка проверки таблицы ${tableName}: ${err.message}`);
-              return;
-            }
-            if (!row) {
-              db.run(
-                `CREATE TABLE ${tableName} (x INTEGER, y INTEGER, color TEXT, userId TEXT, PRIMARY KEY (x, y))`,
-                (err) => {
-                  if (err) {
-                    logger.error(`Ошибка создания таблицы ${tableName}: ${err.message}`);
-                  } else {
-                    logger.info(`Таблица ${tableName} создана для игры ${gameId}`);
-                    getBattleCanvasStatus(tableName, socket);
-                  }
-                }
-              );
-            } else {
-              getBattleCanvasStatus(tableName, socket);
-            }
-          }
+  socket.on('draw-pixel', async (pixelData) => {
+    if (socket.user.isGuest) {
+      socket.emit('error', { message: 'Guests cannot draw pixels' });
+      return;
+    }
+
+    const currentIdentifier = socket.handshake.auth.uniqueIdentifier;
+    const { x, y, color, userId = currentIdentifier } = pixelData;
+
+    try {
+      if (!currentRoute) {
+        throw new Error('Current route is not defined');
+      }
+
+      if (['/canvas-1', '/canvas-2', '/canvas-3'].includes(currentRoute)) {
+        await handlePixelDraw(x, y, color, userId, io, currentRoute);
+      } else if (currentRoute === '/single-player-game') {
+        if (!currentIdentifier || currentIdentifier === 'undefined') {
+          throw new Error('Invalid uniqueIdentifier for single-player game');
+        }
+        await handlePixelDraw(
+          x,
+          y,
+          color,
+          userId,
+          io,
+          currentRoute,
+          currentIdentifier
         );
-        socket.emit('access-granted', { gameId });
       } else {
-        console.log(`Игрок ${playerId} не найден в игре ${gameId}`);
-        socket.emit('access-denied', { message: 'Вы не участник этой игры' });
+        throw new Error(`Unknown route: ${currentRoute}`);
       }
-    } else {
-      const canvasName = getTableName(route, uniqueIdentifier);
-      if (canvasName) {
-        getCanvasStatus(canvasName, socket, route);
-      }
+
+      setDrawPixel(currentIdentifier, socket, currentRoute);
+    } catch (err) {
+      logger.error(`Error drawing pixel: ${err.message}, route=${currentRoute}, identifier=${currentIdentifier}`);
+      socket.emit('error', { message: 'Error drawing pixel', details: err.message });
     }
   });
 
   socket.on('get-max-pixel-count', () => {
+    if (socket.user.isGuest) {
+      socket.emit('max-pixel-count', { maxPixelCount: 0 });
+      return;
+    }
     getMaxPixelCount(uniqueIdentifier, socket);
   });
 
   socket.on('update-max-pixel-count', (data, callback) => {
-    const { newMaxPixelCount } = data;
-    if (!newMaxPixelCount || typeof newMaxPixelCount !== 'number') {
-      callback({ success: false, message: 'Invalid maxPixelCount value' });
+    if (socket.user.isGuest) {
+      callback({
+        success: false,
+        message: 'Guests cannot update max pixel count',
+      });
       return;
     }
+    const { newMaxPixelCount } = data;
+    if (!newMaxPixelCount || typeof newMaxPixelCount !== 'number') {
+      callback({
+        success: false,
+        message: 'Invalid maxPixelCount value',
+      });
+      return;
+    }
+
     updateMaxPixelCount(uniqueIdentifier, newMaxPixelCount, callback);
   });
-
-  socket.on('draw-pixel', async (pixelData) => {
-    const currentIdentifier = socket.handshake.auth.uniqueIdentifier;
-    const { x, y, color, userId = currentIdentifier } = pixelData;
-  
-    try {
-      if (['/canvas-1', '/canvas-2', '/canvas-3'].includes(currentRoute)) {
-        await handlePixelDraw(x, y, color, userId, io, currentRoute);
-      } else if (currentRoute === '/single-player-game') {
-        await handlePixelDraw(x, y, color, userId, io, currentRoute, currentIdentifier);
-      } else if (currentRoute.startsWith('/battle/')) {
-        const gameId = currentRoute.split('/')[2];
-        const game = battleManager.games[gameId];
-  
-        if (game && game.state === 'drawing' && game.players.includes(currentIdentifier)) {
-          const playerIndex = game.players.indexOf(currentIdentifier) + 1;
-          const tableName = `P${playerIndex}_${gameId}`;
-          
-          db.run(
-            `INSERT OR REPLACE INTO ${tableName} (x, y, color, userId) VALUES (?, ?, ?, ?)`,
-            [x, y, color, currentIdentifier],
-            (err) => {
-              if (err) {
-                logger.error(`Ошибка сохранения пикселя в ${tableName}: ${err.message}`);
-              } else {
-                console.log(`Игрок ${currentIdentifier} нарисовал пиксель в игре ${gameId}`);
-                socket.emit('battle-pixel-drawn', { x, y, color });
-                io.to(`game_${gameId}`).emit('battle-pixel-drawn', { x, y, color });
-              }
-            }
-          );
-        } else {
-          console.log(`Игрок ${currentIdentifier} не может рисовать в игре ${gameId}, состояние: ${game?.state}`);
-        }
-      } else {
-        logger.warn(`Неизвестный маршрут: ${currentRoute}`);
-      }
-  
-      setDrawPixel(currentIdentifier, socket, currentRoute);
-    } catch (err) {
-      logger.error('Ошибка при отрисовке пикселя:', err);
-    }
-  });
-  
 
   socket.on('get-leaderboard', () => {
     getLeaderboard(socket);
   });
 
   socket.on('requestTotalAmount', () => {
+    if (socket.user.isGuest) {
+      socket.emit('placed-pixels', { count: 0 });
+      socket.emit('placed-pixels-canvas1', { count: 0 });
+      return;
+    }
     getPlacedPixels(uniqueIdentifier, socket);
     getPlacedPixelsCanvas1(uniqueIdentifier, socket);
   });
 
   socket.on('get-achievements-user-data', () => {
+    if (socket.user.isGuest) {
+      socket.emit('achievements-user-data', { achievements: [] });
+      return;
+    }
     getUserAchievement(uniqueIdentifier, socket);
   });
 
   socket.on('get-username-data', () => {
+    if (socket.user.isGuest) {
+      socket.emit('username-data', { username: 'Guest' });
+      return;
+    }
     getUsernameData(uniqueIdentifier, socket);
   });
 
-  socket.on('get-battle-games', () => {
-    socket.join('battle-lobby');
-    const availableGames = battleManager.getAvailableGames();
-    socket.emit('battle-games', availableGames);
-  });
-
-  // socket.on('create-battle-game', (data) => {
-  //   const { serverId } = data || {};
-  //   const gameId = battleManager.createGame(serverId);
-  //   socket.emit('game-created', { gameId, serverId });
-  // });
-
-  socket.on('join-battle-game', (data) => {
-    const { gameId } = data;
-    const playerId = socket.handshake.auth.uniqueIdentifier;
-
-    if (!playerId) {
-      socket.emit('join-failed', { message: 'Не найден уникальный идентификатор игрока.' });
-      return;
-    }
-
-    const tryJoin = (targetGameId) => {
-      const success = battleManager.joinGame(targetGameId, playerId, socket);
-      if (success) {
-        const game = battleManager.games[targetGameId];
-        console.log(
-          `Игрок ${playerId} (сокет ${socket.id}) присоединен к игре ${targetGameId}`
-        );
-        socket.emit('joined-game', { gameId: targetGameId });
-        socket.emit('game-state', {
-          gameId: targetGameId,
-          players: game.players,
-          countdown: game.state === 'countdown' ? game.countdown : null,
-          status: game.state,
-        });
-      } else {
-        socket.emit('join-failed', { message: 'Игра недоступна или заполнена' });
-      }
-    };
-
-    if (gameId === 'random') {
-      const availableGames = battleManager.getAvailableGames().filter(
-        (g) => g.state === 'waiting' && g.players.length < 8
-      );
-      if (availableGames.length > 0) {
-        const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
-        tryJoin(randomGame.id);
-      } else {
-        socket.emit('join-failed', { message: 'Нет доступных игр' });
-      }
-    } else {
-      tryJoin(gameId);
-    }
-  });
-
-  socket.on('leave-battle-game', (data) => {
-    const { gameId } = data;
-    const playerId = socket.handshake.auth.uniqueIdentifier;
-    battleManager.leaveGame(gameId, playerId);
-    socket.emit('left-game', { gameId });
-  });
-
-  socket.on('check-game-ready', ({ gameId }, callback) => {
-    const game = battleManager.games[gameId];
-    if (game && game.state === 'countdown') {
-      callback({ ready: true });
-    } else {
-      callback({ ready: false });
-    }
-  });
-
   socket.on('connect', () => {
-    console.log('Client connected:', socket.id);
+    io.emit('user-count', {
+      totalUsers: Object.keys(onlineUsers).length || 0,
+      totalConnections: Object.values(onlineUsers).reduce(
+        (total, connections) => total + (connections?.length || 0),
+        0
+      ) || 0,
+    });
   });
 
+  // eslint-disable-next-line no-unused-vars
   socket.on('error', (error) => {
-    console.error('Socket error:', error);
-    socket.emit('server-error', { message: 'Произошла ошибка на сервере' });
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`Сокет ${socket.id} отключился, playerId: ${uniqueIdentifier}`);
-    for (const gameId in battleManager.games) {
-      const game = battleManager.games[gameId];
-      if (game.players.includes(uniqueIdentifier)) {
-        console.log(`Игрок ${uniqueIdentifier} временно отключён от игры ${gameId}`);
-        io.to(`game_${gameId}`).emit('player-disconnected', { playerId: uniqueIdentifier });
-      }
-    }
-    onlineUsers = Math.max(onlineUsers - 1, 0);
-    io.emit('user-count', onlineUsers);
+    socket.emit('server-error', { message: 'Server error occurred' });
   });
 }
 

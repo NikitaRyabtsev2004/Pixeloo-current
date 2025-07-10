@@ -10,7 +10,7 @@ import Account from './Menu-folders/Account';
 
 const Menu = ({ socket }) => {
   const [isState, setIsState] = useState(0);
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   return (
     <div>

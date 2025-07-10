@@ -28,11 +28,11 @@ const App = () => {
     const savedValue = localStorage.getItem('intro');
     return savedValue ? savedValue === 'true' : true;
   });
-  const [isSounds, setIsSounds] = useState(() => {
+  const [isSounds] = useState(() => {
     const savedValue = localStorage.getItem('sounds');
     return savedValue ? savedValue === 'true' : true;
   });
-  const [isHudOpacity, setIsHudOpacity] = useState(() => {
+  const [isHudOpacity] = useState(() => {
     const savedValue = localStorage.getItem('HUDOpacity');
     return savedValue !== null ? parseInt(savedValue, 10) : 50;
   });

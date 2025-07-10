@@ -1,3 +1,5 @@
+const { PixelReplenishmentService } = require("../../pixel/pixelReplenishmentService.cjs");
+
 /* eslint-disable no-console */
 function handleServerEvents() {
   process.on('unhandledRejection', (reason, promise) => {
@@ -19,7 +21,7 @@ const handleServerSigintEvent = (io) => {
   process.on('SIGINT', () => {
     console.log('Shutting down server...');
     io.emit('server-status-update', { status: 'offline' });
-
+    PixelReplenishmentService.stop();
     setTimeout(() => {
       process.exit(0);
     }, 3000);

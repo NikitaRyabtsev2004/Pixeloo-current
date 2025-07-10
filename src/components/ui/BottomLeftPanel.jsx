@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { toggleControlPanel } from '../../redux/slices/uiSlice';
 import { ColorPalette } from './ColorPalette.jsx';
@@ -37,55 +37,55 @@ export const ColorSelector = ({
     return savedValue !== null ? parseInt(savedValue, 10) : 50;
   });
 
-  const handleKeyDown = (event) => {
-    if (
-      document.activeElement.tagName === 'INPUT' ||
-      document.activeElement.tagName === 'TEXTAREA' ||
-      document.activeElement.isContentEditable
-    ) {
-      return;
-    }
-
-    switch (event.code) {
-      case 'ArrowUp':
-      case 'KeyW':
-        handleMoveUp();
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        handleMoveDown();
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        handleMoveLeft();
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        handleMoveRight();
-        break;
-      case 'KeyE':
-        handleDecreaseScale();
-        break;
-      case 'KeyQ':
-        handleIncreaseScale();
-        break;
-      default:
-        break;
-    }
-  };
-
-  const handleWheel = (event) => {
-    if (event.target.closest('.bottom-left-panel___container')) {
-      return;
-    }
-    if (event.deltaY < 0) {
-      handleIncreaseScale();
-    } else {
-      handleDecreaseScale();
-    }
-  };
-
   useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA' ||
+        document.activeElement.isContentEditable
+      ) {
+        return;
+      }
+
+      switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          handleMoveUp();
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          handleMoveDown();
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          handleMoveLeft();
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          handleMoveRight();
+          break;
+        case 'KeyE':
+          handleDecreaseScale();
+          break;
+        case 'KeyQ':
+          handleIncreaseScale();
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleWheel = (event) => {
+      if (event.target.closest('.bottom-left-panel___container')) {
+        return;
+      }
+      if (event.deltaY < 0) {
+        handleIncreaseScale();
+      } else {
+        handleDecreaseScale();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('wheel', handleWheel);
 

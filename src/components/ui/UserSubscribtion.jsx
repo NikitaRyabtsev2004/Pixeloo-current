@@ -10,7 +10,7 @@ export const UserSubscription = ({
   DBmaxPixelCount,
   setIsOpenSubscription,
 }) => {
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
   if (!isAuthenticated) return null;
 
   const setIsOpenSubscriptionButtonSound = (state) => {

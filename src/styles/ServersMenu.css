@@ -1,0 +1,186 @@
+.servers {
+    font-family: 'Pixelify Sans', sans-serif;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 55px;
+    left: 0px;
+    width: 90px;
+    height: 30px;
+    background: #cccccc75;
+    color: black;
+    font-weight: 500;
+    z-index: 1000;
+    cursor: pixelated;
+    transition: all 500ms ease;
+    animation: servers-pulse 5s infinite;
+    cursor: pointer;
+}
+
+.servers:hover {
+    background: #353535ce;
+    color: #00ff00;
+    width: 160px;
+    animation: none;
+}
+
+@media (max-width: 500px) {
+    .servers {
+        top: 40px;
+    }
+
+    .servers:hover {
+        width: 122px;
+    }
+}
+
+.servers-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.servers-modal {
+    font-family: 'Pixelify Sans', sans-serif;
+    background: #222222;
+    padding: 20px;
+    max-width: 600px;
+    width: 90%;
+    text-align: center;
+    color: #ffffff;
+    overflow-y: scroll;
+}
+
+.servers-modal-title {
+    font-size: 20px;
+    color: #00ff00;
+    margin-bottom: 20px;
+}
+
+.servers-modal-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.canvas-preview {
+    background: #333333;
+    border: 2px solid #00ff00;
+    padding: 10px;
+    width: 90%;
+    cursor: pixelated;
+    transition: transform 200ms ease;
+}
+
+.canvas-preview:hover {
+    transform: scale(1.05);
+}
+
+.canvas-preview img {
+    max-width: 200px;
+    max-height: 200px;
+    height: auto;
+    width: auto;
+    transition: transform 200ms ease;
+}
+
+@media (max-width: 560px) {
+    .canvas-preview img {
+        height: 150px;
+        width: 150px;
+    }
+}
+
+@media (max-width: 463px) {
+    .servers-modal {
+        height: 90%;
+    }
+}
+
+.canvas-preview:hover img {
+    transform: scale(1.09);
+}
+
+.canvas-preview h3 {
+    font-size: 14px;
+    color: #ff00ff;
+    margin-bottom: 10px;
+}
+
+.canvas-preview img {
+    max-width: 200px;
+    max-height: 200px;
+    image-rendering: pixelated;
+    border: 2px solid #ffffff;
+}
+
+.canvas-preview div {
+    width: 200px;
+    height: 200px;
+    background: #555555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff5555;
+    font-size: 12px;
+    border: 2px solid #ffffff;
+}
+
+.server_button {
+    font-family: 'Pixelify Sans', sans-serif;
+    background: #444444;
+    color: #ffffff;
+    cursor: pixelated;
+    font-size: 14px;
+    transition: all 200ms ease;
+    opacity: 80%;
+}
+
+.server_button:hover {
+    background: #3591ce;
+    color: #000000;
+    transform: translateY(-2px);
+    opacity: 80%;
+}
+
+.server_button:hover .Subscription__cost,
+.server_button:hover .Subscription__info {
+    background: #ce6535;
+    color: white;
+}
+
+.battle-button {
+    border-color: #ff0000;
+}
+
+.battle-button:hover {
+    background: #ff0000;
+    color: #ffffff;
+}
+
+.servers-modal-close {
+    font-family: 'Pixelify Sans', sans-serif;
+    padding: 10px 20px;
+    background: #ff5555;
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    cursor: pixelated;
+    font-size: 14px;
+    transition: all 200ms ease;
+}
+
+.servers-modal-close:hover {
+    background: #ffffff;
+    color: #ff5555;
+    transform: translateY(-2px);
+}

@@ -1,5 +1,9 @@
 export const PIXEL_SIZE = 20;
-export const GRID_WIDTH = 800;
-export const GRID_HEIGHT = 800;
-export const GRID_WIDTH_BATTLE = 150;
-export const GRID_HEIGHT_BATTLE = 150;
+export const S1_GRID_WIDTH = 3000;
+export const S1_GRID_HEIGHT = 3000;
+export const S2_GRID_WIDTH = 2000;
+export const S2_GRID_HEIGHT = 2000;
+export const S3_GRID_WIDTH = 1000;
+export const S3_GRID_HEIGHT = 1000;
+export const SINGLEPLAYER_GRID_WIDTH = 3000
+export const SINGLEPLAYER_GRID_HEIGHT = 3000

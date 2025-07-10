@@ -32,8 +32,8 @@ body>div[style*="color: red"] {
 }
 
 .canvas__container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   position: relative;
   display: flex;
@@ -391,14 +391,6 @@ form {
   color: white;
 }
 
-.SubscriptionModal__Content button:hover .Subscription__cost {
-  background: #a34caf88;
-}
-
-.SubscriptionModal__Content button:hover .Subscription__info {
-  background: #a34caf88;
-}
-
 .Subscription__cost,
 .Subscription__info {
   padding: 10px 0;
@@ -436,17 +428,19 @@ form {
   font-weight: 600;
   margin: 0 0 5px 0;
   width: 90%;
-  text-align: left;
+  text-align: justify;
 }
 
 .rules-modal__highlight {
-  background: #ff5e5e;
+  background: #9b3b3b;
+  text-align: center;
+  color: white;
 }
 
 .rules-modal__title {
-  background: #ff5e5e;
+  background: #9b3b3b;
   padding: 5px;
-  color: #000000;
+  color: white;
   text-align: center;
   font-size: 34px;
   font-weight: bold;
@@ -457,7 +451,7 @@ form {
 
 .modal__close-button {
   background: #282c34;
-  color: rgb(0, 0, 0);
+  color: #ffffff;
   border: none;
   padding: 10px 20px;
   font-size: 16px;
@@ -487,7 +481,7 @@ form {
   }
 
   66% {
-    background: #ff5e5e;
+    background: #9b3b3b;
     width: 70%;
   }
 
@@ -771,49 +765,10 @@ form {
 
 }
 
-.server_button {
-  background: #cccccc75;
-  cursor: pointer;
-  margin: 0 0 15px 0;
-  transition: all 200ms ease-in-out;
-  width: 100%;
-}
-
 .server_button:hover {
   background: #353535ce;
   color: white;
   width: 100%;
-}
-
-.servers {
-  font-size: 14px;
-  display: flex;
-  position: fixed;
-  top: 50px;
-  left: 0px;
-  width: 110px;
-  z-index: 2;
-  height: 30px;
-  background: #cccccc75;
-  font-weight: 500;
-  color: black;
-  flex-direction: column;
-  text-align: center;
-  cursor: pointer;
-  transition: 500ms ease all;
-  animation: servers infinite 5s;
-}
-
-.servers__list {
-  position: relative;
-  top: 30px;
-}
-
-.servers:hover {
-  background: #353535ce;
-  color: white;
-  animation: none;
-  width: 120px;
 }
 
 .online_status {
@@ -977,7 +932,7 @@ form {
 }
 
 .ready-bar__container {
-  height: 10px;
+  height: 20px;
   width: 100%;
   background-color: #ddd;
   margin: 5px auto;
@@ -1047,6 +1002,14 @@ form {
 .LeaderBoard__list {
   margin: 0;
   padding: 0;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  height: 150px;
+}
+
+.LeaderBoard__list::-webkit-scrollbar {
+  display: none;
 }
 
 .LeaderBoard__logo,
@@ -1059,6 +1022,11 @@ form {
 
 .LeaderBoard__user {
   margin: 0 10px 0 10px;
+  border-bottom: solid 2px;
+  display: flex;
+  flex-direction: row;
+  background-position: 31px 14px;
+  background-size: 25%;
 }
 
 .LeaderBoard__user__data,
@@ -1074,8 +1042,6 @@ form {
   flex-direction: row;
   justify-content: space-between;
   background-image: url(../../public/pixeloophoto.png);
-  background-size: contain;
-  background-repeat: no-repeat;
   background-color: rgba(255, 255, 255, 0.733);
   background-blend-mode: overlay;
   margin-bottom: 5px;
@@ -1090,9 +1056,13 @@ form {
 .LeaderBoard__user__index,
 .LeaderBoard__user__count,
 .LeaderBoard__user__username {
-  padding: 5px;
-  background: #ffffffb2;
+  background: #9494945b;
+  border-top: 2px solid;
   color: black;
+}
+
+.LeaderBoard__user__username.green {
+  background: #92ff325b;
 }
 
 .LeaderBoard__user:nth-child(1) .LeaderBoard__user__index {
@@ -1343,7 +1313,7 @@ form {
   height: auto;
   transform: translateY(-50%);
   background: #133541ed;
-  z-index: 1;
+  z-index: 999;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1429,7 +1399,20 @@ form {
   display: flex;
   flex-direction: column;
   overflow-y: scroll;
-  max-height: 200px;
+  max-height: 250px;
+  min-height: 200px;
+  height: auto;
+}
+
+.Account-edit-menu {
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.Account-edit-menu button {
+  padding: 10px 0px;
 }
 
 .Account-username,
@@ -1477,7 +1460,7 @@ form {
   width: 100%;
 }
 
-.BattleMenuModal__logo h1{
+.BattleMenuModal__logo h1 {
   margin: 0;
 }
 
@@ -1655,7 +1638,16 @@ form {
   .Username-change__container {
     max-height: 200px;
     overflow-y: scroll;
+    scrollbar-width: none;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .Email-change__container h3,
+  .Password-change__container h3,
+  .Username-change__container h3 {
+    background: white;
   }
 
   .Email-change__container p,
@@ -1663,6 +1655,7 @@ form {
   .Username-change__container p {
     font-size: 12px;
     word-wrap: break-all;
+    background: white;
   }
 
   .Email-change__container input,
@@ -1823,13 +1816,13 @@ form {
   }
 
   .Tg_Link {
-    top: 40px;
-    left: 80px;
+    top: 0px;
+    left: 122px;
   }
 
   .Tg_Link img {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
   }
 
   .bottom-left-panel___buttons-container button {

@@ -1,5 +1,7 @@
+/* eslint-disable linebreak-style */
 /* eslint-disable no-console */
 const axios = require('axios');
+const { logger } = require('../../utils/libs/logger.cjs');
 
 // Кэш для статусов платежей
 const paymentCache = new Map();
@@ -37,7 +39,7 @@ const checkPayment = async (req, res) => {
     // Сохраняем статус в кэш
     paymentCache.set(paymentId, { status, timestamp: Date.now() });
 
-    console.log(`Платеж ID: ${paymentId} проверен успешно. Статус: ${status}`);
+    logger.info(`Платеж ID: ${paymentId} проверен успешно. Статус: ${status}`);
 
     // Возвращаем статус платежа
     res.status(200).json({ status });

@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.yandex.ru',
+  host: 'smtp.beget.com',
   port: 465,
   secure: true,
   auth: {

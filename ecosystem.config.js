@@ -15,7 +15,7 @@ module.exports = {
       script: "node",         
       cwd: './server',      
       args: "server.cjs",     
-      max_memory_restart: "1300M",
+      max_memory_restart: "2000M",
       watch: false,
       autorestart: true,
       env: {

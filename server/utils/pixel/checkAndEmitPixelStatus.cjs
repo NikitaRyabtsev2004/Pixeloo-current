@@ -24,8 +24,8 @@ function checkAndEmitPixelStatus(socket, uniqueIdentifier) {
 
       socket.emit('no-more-pixels', hasNoMorePixels);
 
-      const logMessage = `Pixel Status - User (${uniqueIdentifier}) has ${pixelCount} pixels remaining - ${moment().format('LL LTS')}`;
-      logger.info(logMessage);
+      //? const logMessage = `Pixel Status - User (${uniqueIdentifier}) has ${pixelCount} pixels remaining - ${moment().format('LL LTS')}`;
+      //? logger.info(logMessage);
     }
   );
 }

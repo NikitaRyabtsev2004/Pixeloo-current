@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useNotifications } from '../../helpers/notifications';
+// import { useNotifications } from '../../helpers/notifications';
 import { handleUpdateMaxPixelCount } from '../pixels/updateMaxPixelCount';
 
 export const doPayment = async (

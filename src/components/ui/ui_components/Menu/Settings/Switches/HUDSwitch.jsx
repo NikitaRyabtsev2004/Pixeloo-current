@@ -6,7 +6,7 @@ const HUDSwitch = () => {
   const [isChecked, setIsChecked] = useState(() => {
     return localStorage.getItem('HUD') === 'true';
   });
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   const handleCheckboxClick = () => {
     setIsChecked((prev) => {

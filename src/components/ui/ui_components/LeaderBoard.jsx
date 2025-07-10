@@ -9,7 +9,8 @@ const LeaderBoard = ({ socket }) => {
   const [leadersCanvas2, setLeadersCanvas2] = useState([]);
   const [leadersCanvas3, setLeadersCanvas3] = useState([]);
   const [isState, setState] = useState(1);
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const [username, setUsername] = useState('');
+  const { isSoundsOn } = useSettings();
 
   useEffect(() => {
     if (!socket) return;
@@ -50,6 +51,26 @@ const LeaderBoard = ({ socket }) => {
     }
   };
 
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.emit('get-username-data');
+
+    const handleUsernameData = (data) => {
+      if (data.success) {
+        setUsername(data.username);
+      } else {
+        console.error('Ошибка получения данных:', data.error);
+      }
+    };
+
+    socket.on('username-data', handleUsernameData);
+
+    return () => {
+      socket.off('username-data', handleUsernameData);
+    };
+  }, [socket]);
+
   const renderLeaderboard = (data) => (
     <ul className="LeaderBoard__list">
       {Array.isArray(data) &&
@@ -57,7 +78,7 @@ const LeaderBoard = ({ socket }) => {
           <li className="LeaderBoard__user" key={`${leader.username}-${index}`}>
             <div className="LeaderBoard__user__index">№{index + 1}.</div>
             <div className="LeaderBoard__user__data">
-            <div className="LeaderBoard__user__username">
+              <div className={leader.username === username ? 'LeaderBoard__user__username green' : 'LeaderBoard__user__username'}>
                 {leader.username}
               </div>
               <div className="LeaderBoard__user__count">
@@ -85,9 +106,9 @@ const LeaderBoard = ({ socket }) => {
       </div>
       <div className="LeaderBoard__title">
         <div>Place</div>
-        <div className='LeaderBoard__title__data'>
-          <div>Pixel count</div>
+        <div className="LeaderBoard__title__data">
           <div>Username</div>
+          <div>Pixel count</div>
         </div>
       </div>
       {renderLeaderboard(getLeaderboardData())}

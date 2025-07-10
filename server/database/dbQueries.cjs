@@ -441,15 +441,32 @@ function getPlayerNames(gameId, callback) {
   );
 }
 
-function getBattleCanvasStatus(tableName, socket) {
-  db.all(`SELECT x, y, color FROM ${tableName}`, [], (err, rows) => {
-    if (err) {
-      logger.error(`Ошибка загрузки холста ${tableName}: ${err.message}`);
-      socket.emit('battle-canvas-data', []);
-    } else {
-      socket.emit('battle-canvas-data', rows || []);
+function createSinglePlayerTable(uniqueIdentifier, callback) {
+  const tableName = `SinglePlayer_${uniqueIdentifier}`;
+
+  db.run(
+    `
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+      x INTEGER,
+      y INTEGER,
+      color INTEGER,
+      userId TEXT,
+      created_at TEXT DEFAULT (datetime('now', '+3 hours')),
+      PRIMARY KEY (x, y)
+    ) WITHOUT ROWID;
+  `,
+    (err) => {
+      if (err) {
+        logger.error(
+          `Error creating SinglePlayer table ${tableName}: ${err.message}`
+        );
+        return callback({ success: false, message: err.message });
+      }
+
+      logger.info(`SinglePlayer table ${tableName} created successfully`);
+      callback({ success: true });
     }
-  });
+  );
 }
 
 module.exports = {
@@ -466,5 +483,5 @@ module.exports = {
   getUserAchievement,
   getUsernameData,
   getPlayerNames,
-  getBattleCanvasStatus,
+  createSinglePlayerTable,
 };

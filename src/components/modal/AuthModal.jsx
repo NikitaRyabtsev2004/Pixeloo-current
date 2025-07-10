@@ -22,11 +22,10 @@ const AuthModal = ({ onClose }) => {
     confirmPassword: '',
     confirmationCode: '',
   });
-  // eslint-disable-next-line
   const [timer, setTimer] = useState(30);
   const [isDisabled, setIsDisabled] = useState(false);
   const [statusTimer, setStatusTimer] = useState(5);
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   useEffect(() => {
     if (authStatus) {
@@ -106,7 +105,6 @@ const AuthModal = ({ onClose }) => {
       dispatch(setAuthStatus(AUTH_MESSAGES.errorGeneric));
     }
   };
-  
 
   const registerAccount = async () => {
     try {
@@ -206,7 +204,6 @@ const AuthModal = ({ onClose }) => {
       dispatch(setAuthStatus(AUTH_MESSAGES.errorGeneric));
     }
   };
-  
 
   const handleCancel = () => {
     if (resetPasswordFlow) {
@@ -235,7 +232,7 @@ const AuthModal = ({ onClose }) => {
             <>
               <input
                 type="email"
-                inputmode="text"
+                inputMode="text"
                 name="email"
                 placeholder="Email"
                 value={formData.email}
@@ -251,7 +248,7 @@ const AuthModal = ({ onClose }) => {
             <>
               <input
                 type="text"
-                inputmode="text"
+                inputMode="text"
                 name="confirmationCode"
                 placeholder="Код подтверждения"
                 value={formData.confirmationCode}
@@ -268,7 +265,7 @@ const AuthModal = ({ onClose }) => {
               />
               <input
                 type="password"
-                inputmode="text"
+                inputMode="text"
                 name="confirmPassword"
                 placeholder="Подтверждение пароля"
                 value={formData.confirmPassword}
@@ -286,7 +283,7 @@ const AuthModal = ({ onClose }) => {
             <>
               <input
                 type="text"
-                inputmode="text"
+                inputMode="text"
                 name="confirmationCode"
                 placeholder="Код подтверждения"
                 value={formData.confirmationCode}
@@ -302,7 +299,7 @@ const AuthModal = ({ onClose }) => {
             <>
               <input
                 type="email"
-                inputmode="text"
+                inputMode="text"
                 name="email"
                 placeholder="Email"
                 value={formData.email}
@@ -311,7 +308,7 @@ const AuthModal = ({ onClose }) => {
               />
               <input
                 type="text"
-                inputmode="text"
+                inputMode="text"
                 name="username"
                 placeholder="Имя пользователя"
                 value={formData.username}
@@ -320,7 +317,7 @@ const AuthModal = ({ onClose }) => {
               />
               <input
                 type="password"
-                inputmode="text"
+                inputMode="text"
                 name="password"
                 placeholder="Пароль"
                 value={formData.password}
@@ -329,7 +326,7 @@ const AuthModal = ({ onClose }) => {
               />
               <input
                 type="password"
-                inputmode="text"
+                inputMode="text"
                 name="confirmPassword"
                 placeholder="Подтверждение пароля"
                 value={formData.confirmPassword}
@@ -345,17 +342,17 @@ const AuthModal = ({ onClose }) => {
         ) : (
           <>
             <input
-              type="email"
-              inputmode="text"
+              type="text"
+              inputMode="text"
               name="usernameOrEmail"
-              placeholder="Email"
+              placeholder="Email или username"
               value={formData.usernameOrEmail}
               onChange={handleChange}
               required
             />
             <input
               type="password"
-              inputmode="text"
+              inputMode="text"
               name="password"
               placeholder="Пароль"
               value={formData.password}

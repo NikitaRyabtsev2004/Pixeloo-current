@@ -124,7 +124,7 @@ class CubeRotation extends Component {
   };
 
   updateCubeArray = (rotation) => {
-    const { gridSize, cubeSize, cubePosition, edgeWidth, cubeColor } = this.props;
+    const { gridSize, cubeSize, cubePosition, cubeColor } = this.props;
     const half = Math.floor(gridSize / 2);
     const array = Array(gridSize)
       .fill(0)

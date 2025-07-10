@@ -28,19 +28,74 @@ const loginUser = (req, res) => {
             .json({ message: 'Неверный логин или пароль.' });
         }
 
-        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-          expiresIn: '1h',
-        });
-        const logMessage = `Login Successful - Username/Email: ${usernameOrEmail} - ${new Date().toISOString()}`;
-        logger.info(logMessage);
-        res.status(200).json({
-          message: 'Успешный вход.',
-          token,
-          uniqueIdentifier: user.uniqueIdentifier,
-        });
+        const token = jwt.sign(
+          { userId: user.id, uniqueIdentifier: user.uniqueIdentifier },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' } 
+        );
+
+        db.run(
+          'UPDATE Users SET authToken = ?, authTokenExpires = ? WHERE id = ?',
+          [token, Date.now() + 24 * 60 * 60 * 1000, user.id],
+          (err) => {
+            if (err) {
+              logger.error(`Failed to update authToken: ${err.message}`);
+              return res.status(500).json({ message: 'Ошибка сервера.' });
+            }
+
+            const logMessage = `Login Successful - Username/Email: ${usernameOrEmail} - ${new Date().toISOString()}`;
+            logger.info(logMessage);
+            res.status(200).json({
+              message: 'Успешный вход.',
+              token,
+              uniqueIdentifier: user.uniqueIdentifier,
+            });
+          }
+        );
       });
     }
   );
 };
 
-module.exports = { loginUser };
+const refreshToken = (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Токен не предоставлен.' });
+  }
+
+  db.get(
+    'SELECT * FROM Users WHERE authToken = ? AND authTokenExpires > ?',
+    [token, Date.now()],
+    (err, user) => {
+      if (err || !user) {
+        return res.status(401).json({ message: 'Недействительный токен или сессия истекла.' });
+      }
+
+      const newToken = jwt.sign(
+        { userId: user.id, uniqueIdentifier: user.uniqueIdentifier },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      db.run(
+        'UPDATE Users SET authToken = ?, authTokenExpires = ? WHERE id = ?',
+        [newToken, Date.now() + 24 * 60 * 60 * 1000, user.id],
+        (err) => {
+          if (err) {
+            logger.error(`Failed to update authToken: ${err.message}`);
+            return res.status(500).json({ message: 'Ошибка сервера.' });
+          }
+
+          res.status(200).json({
+            message: 'Токен обновлен.',
+            token: newToken,
+            uniqueIdentifier: user.uniqueIdentifier,
+          });
+        }
+      );
+    }
+  );
+};
+
+module.exports = { loginUser, refreshToken };

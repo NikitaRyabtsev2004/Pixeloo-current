@@ -44,7 +44,7 @@ export default function useNotifications() {
 
   return {
     showDisconnectedNotification: () => 
-      showNotification('Отключено!', 'Соединение с сервером потеряно, или переподключение.', 'warning'),
+      showNotification('Отключено или переподключение', 'Соединение с сервером потеряно, или переподключение на другой сервер.', 'warning'),
 
     showAuthenticationRequiredNotification: () => {
       playSound(0.5, 'error-message.mp3', isSoundsOn);

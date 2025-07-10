@@ -1,3 +1,4 @@
+/* eslint-disable linebreak-style */
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -9,45 +10,50 @@ const winston = require('winston');
 
 const authRoutes = require('./auth/auth.cjs');
 const paymentRoutes = require('./payment/payment.cjs');
+const { router: imageRouter } = require('../images/canvasImageGenerator.cjs');
 
 const app = express();
 
-app.use(xss());
-app.use(helmet()); 
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true }));  
-app.use(bruteforce.prevent); 
+const corsOptions = {
+  origin: process.env.CLIENT_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
 
-app.use(limiter); 
+// Apply CORS middleware for API routes
+app.use(cors(corsOptions));
+
+// Middleware
+app.use(xss());
+app.use(helmet());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(bruteforce.prevent);
+app.use(limiter);
 app.use('/api/payment', createPaymentLimiter);
 app.use('/api/payment/status', checkPaymentLimiter);
 
-const corsOptions = {
-  origin: 'http://localhost:4000', 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
-  allowedHeaders: ['Content-Type', 'Authorization'], 
-  credentials: true, 
-};
-
-app.use(cors(corsOptions));
-
-
-app.options('*', cors(corsOptions));
-
-
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:4000');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// Static file serving with CORS headers
+app.use('/images', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // Allow cross-origin image loading
   next();
-});
+}, express.static('canvas_images'));
 
+// API routes
+app.use('/', imageRouter);
+app.use('/srv/auth', authRoutes);
+app.use('/api', paymentRoutes);
 
+// Request logging
 app.use(
   expressWinston.logger({
     transports: [
-      new winston.transports.File({ filename: process.env.REQUESTS_LOG }), // Логирование в файл
+      new winston.transports.File({ filename: process.env.REQUESTS_LOG }),
     ],
     format: winston.format.combine(
       winston.format.timestamp(),
@@ -62,9 +68,5 @@ app.use(
     },
   })
 );
-
-// Маршруты
-app.use('/srv/auth', authRoutes);
-app.use('/api', paymentRoutes);  
 
 module.exports = app;

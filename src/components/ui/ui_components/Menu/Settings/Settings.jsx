@@ -16,7 +16,7 @@ const Settings = ({ onBack }) => {
     return savedValue !== null ? parseInt(savedValue, 10) : 50;
   });
 
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   const handleSliderOpacityChange = (event) => {
     const newValue = Math.min(Math.max(event.target.value, 20), 100);

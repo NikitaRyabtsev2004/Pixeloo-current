@@ -3,7 +3,7 @@ const {
   registerUser,
 } = require('../../controllers/auth/registrationController.cjs');
 const { verifyUser } = require('../../controllers/auth/verifyController.cjs');
-const { loginUser } = require('../../controllers/auth/loginController.cjs');
+const { loginUser, refreshToken } = require('../../controllers/auth/loginController.cjs');
 const {
   resetPassword,
 } = require('../../controllers/auth/resetPassController.cjs');
@@ -20,7 +20,7 @@ const authRouter = express.Router();
 authRouter.post('/register', registerUser);
 authRouter.post('/verify', verifyUser);
 authRouter.post('/login', loginUser);
-
+authRouter.post('/refresh-token', refreshToken);
 authRouter.post('/reset-password', resetPassword);
 authRouter.post('/reset-code', resetCode);
 authRouter.post('/update-username', updateUsername);

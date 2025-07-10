@@ -5,6 +5,7 @@ const {
 const { logger } = require('../../utils/libs/logger.cjs');
 const { transporter } = require('../../utils/libs/transporter.cjs');
 const { validatePassword } = require('../../utils/functions/validators.cjs');
+const { generateEmailTemplate } = require('../../utils/styles/emailTemplate.cjs');
 const bcrypt = require('bcrypt');
 
 const pendingRegistrations = {};
@@ -46,11 +47,18 @@ const registerUser = async (req, res) => {
       uniqueIdentifier,
     };
 
+    const { text, html } = generateEmailTemplate({
+      title: 'Подтверждение регистрации',
+      description: 'Ваш код регистрации',
+      confirmationCode,
+    });
+
     const mailOptions = {
-      from: '"Pixel Art" <SoftSeason@yandex.ru>',
+      from: '"Pixeloo" <pixeloo@pixeloo.ru>',
       to: email,
       subject: 'Подтверждение регистрации',
-      text: `Ваш код подтверждения: ${confirmationCode}`,
+      text,
+      html,
     };
 
     transporter.sendMail(mailOptions, (error) => {
@@ -63,7 +71,7 @@ const registerUser = async (req, res) => {
       const logMessage = `Registration Email Sent - Email: ${email} - ${new Date().toISOString()}`;
       logger.info(logMessage);
       res.status(200).json({
-        message: 'Проверьте вашу почту для подтверждения.',
+        message: 'Введите данные для входа.',
         needVerification: true,
         uniqueIdentifier,
       });

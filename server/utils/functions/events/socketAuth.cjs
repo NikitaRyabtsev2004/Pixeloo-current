@@ -1,6 +1,4 @@
-// utils/socketAuth.js
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const db = require('../../../database/dbSetup.cjs');
 const { logger } = require('../../libs/logger.cjs');
 
@@ -8,34 +6,41 @@ function authenticateSocket(socket, next) {
   const token = socket.handshake.auth.token;
   const uniqueIdentifier = socket.handshake.auth.uniqueIdentifier;
 
+  console.log('Auth data received:', { token, uniqueIdentifier });
+
+  // Устанавливаем socket.user по умолчанию как гость
+  socket.user = { isGuest: true };
+
+  // Если нет токена или идентификатора, подключаем как гость
   if (!token || !uniqueIdentifier) {
-    return next(new Error('Authentication error: Missing token or unique identifier'));
+    logger.warn('Guest connection: No token or unique identifier provided');
+    return next();
   }
 
+  // Проверяем токен JWT
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return next(new Error('Authentication error: Invalid token'));
+      logger.error('Invalid token:', err.message);
+      return next(); // Подключаем как гость при невалидном токене
     }
 
+    // Проверяем пользователя в базе данных
     db.get(
-      'SELECT uniqueIdentifier, pixelCount FROM Users WHERE id = ?',
+      'SELECT id, uniqueIdentifier, pixelCount FROM Users WHERE id = ?',
       [decoded.userId],
       (err, user) => {
         if (err) {
-          logger.error('Database error:', err);
-          return next(new Error('Authentication error: Database error'));
+          logger.error('Database error:', err.message);
+          return next(); // Подключаем как гость при ошибке базы данных
         }
 
-        if (!user || !user.uniqueIdentifier) {
-          return next(new Error('Authentication error: User not found or unique identifier missing'));
+        if (!user || user.uniqueIdentifier !== uniqueIdentifier) {
+          logger.error('User not found or unique identifier mismatch');
+          return next(); // Подключаем как гость, если пользователь не найден
         }
 
-        const isIdentifierMatch = bcrypt.compareSync(uniqueIdentifier, user.uniqueIdentifier);
-        if (!isIdentifierMatch) {
-          return next(new Error('Authentication error: Unique identifier mismatch'));
-        }
-
-        socket.user = { ...decoded, pixelCount: user.pixelCount };
+        socket.user = { ...decoded, pixelCount: user.pixelCount, isGuest: false };
+        logger.info('Authentication successful for user:', decoded.userId);
         next();
       }
     );

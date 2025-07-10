@@ -34,138 +34,105 @@ const BattleMenuModal = ({ onClose, socket }) => {
   const [games, setGames] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [joinedGameId, setJoinedGameId] = useState(null);
-  const [countdown, setCountdown] = useState(null);
   const ownId = localStorage.getItem('uniqueIdentifier');
-  
+
   useEffect(() => {
-    if (!socket) return;
     socket.on('connect', () => {
-      console.log('Socket connected with id:', socket.id);
+      socket.emit('get-battle-games');
     });
+
     socket.on('connect_error', (err) => {
       console.error('Socket connection error:', err);
+      alert('Не удалось подключиться к серверу');
     });
-    return () => {
-      if (socket) {
-        socket.off('connect');
-        socket.off('connect_error');
-      }
-    };
-  }, [socket]);
 
-  useEffect(() => {
-    socket.on('startGame', (data) => {
-      console.log('startGame received:', data);
-      // Ждём подтверждения готовности игры
-      socket.emit('check-game-ready', { gameId: data.gameId }, (response) => {
-        if (response.ready) {
-          navigate(`/battle/${data.gameId}`);
-        } else {
-          console.log('Игра ещё не готова, ожидание...');
-        }
-      });
+    socket.on('battle-games', (battleGames) => {
+      setGames(Array.isArray(battleGames) ? battleGames : []);
     });
-    return () => socket.off('startGame');
-  }, [socket, navigate]);
-  
-  useEffect(() => {
-    if (!ownId) {
-      alert('Идентификатор пользователя не найден. Пожалуйста, войдите в систему.');
-      navigate('/login');
-      return;
-    }
 
-    // Функция регистрации обработчиков, в том числе startGame
-    const registerSocketHandlers = () => {
-      // При успешном подключении отправляем запросы
-      const handleConnect = () => {
-        socket.emit('join-battle-lobby');
-        socket.emit('get-battle-games');
-      };
-
-      // Если сокет уже подключён – вызываем handleConnect сразу
-      if (socket.connected) {
-        handleConnect();
-      } else {
-        socket.on('connect', handleConnect);
-      }
-
-      socket.on('connect_error', (error) => {
-        console.error('Ошибка подключения сокета:', error);
-        alert('Не удалось подключиться к серверу');
-      });
-
-      socket.on('disconnect', (reason) => {
-        console.log('Сокет отключен:', reason);
-      });
-
-      // Другие события
-      socket.on('battle-games', (battleGames) => {
-        setGames(Array.isArray(battleGames) ? battleGames : []);
-      });
-
-      socket.on('game-state', (data) => {
-        console.log('Получено обновление game-state:', data);
-        const { gameId, players, countdown, status } = data;
-        setGames((prevGames) =>
-          prevGames.map((game) =>
-            game.id === gameId ? { ...game, players, status, countdown } : game
-          )
-        );
-        if (joinedGameId === gameId) {
-          setCountdown(countdown);
-          setIsLoading(false);
-        }
-      });
-
-      socket.on('joined-game', (data) => {
-        setJoinedGameId(data.gameId);
-        setIsLoading(false);
+    socket.on('joined-game', (data) => {
+      console.log('Joined game:', data);
+      setJoinedGameId(data.gameId);
+      setIsLoading(false);
+      socket.emit('join-room', `game_${data.gameId}`);
       
-        // ВАЖНО: сообщаем серверу, в какой "route" мы находимся
-        socket.emit('route', `/battle/${data.gameId}`);
-      });
-
-      socket.on('join-failed', (data) => {
-        setIsLoading(false);
-        alert(data.message);
-      });
-    };
-
-    if (socket) {
-      registerSocketHandlers();
-    }
-    
-    // При размонтировании удаляем обработчики
-    return () => {
-      if (socket) {
-        socket.off('connect');
-        socket.off('connect_error');
-        socket.off('disconnect');
-        socket.off('startGame');
-        socket.off('battle-games');
-        socket.off('game-state');
-        socket.off('joined-game');
-        socket.off('join-failed');
+      // ИСПРАВЛЕНО: если игра уже в режиме рисования, сразу перенаправляем
+      if (data.status === 'drawing' && data.gameId) {
+        navigate(`/battle/${data.gameId}`);
       }
-    };
-  }, [socket, navigate, onClose, ownId, joinedGameId]);
+    });
 
-  const handleJoinGame = (gameId) => {
+    socket.on('join-failed', (data) => {
+      setIsLoading(false);
+      alert(data.message);
+    });
+
+    // ИСПРАВЛЕНО: обновляем состояния игр в реальном времени
+    socket.on('game-state', (data) => {
+      console.log('Game state update:', data);
+      setGames((prevGames) =>
+        prevGames.map((game) =>
+          game.id === data.gameId
+            ? { 
+                ...game, 
+                players: data.players, 
+                status: data.status, 
+                countdown: data.countdown 
+              }
+            : game
+        )
+      );
+      
+      // ИСПРАВЛЕНО: если наша игра началась, перенаправляем
+      if (data.status === 'drawing' && data.gameId === joinedGameId) {
+        navigate(`/battle/${data.gameId}`);
+      }
+    });
+
+    socket.on('startDrawing', (data) => {
+      console.log('Start drawing event:', data);
+      if (joinedGameId === data.gameId) {
+        navigate(`/battle/${data.gameId}`);
+      }
+    });
+
+    socket.on('error', (data) => {
+      alert(data.message);
+    });
+
+    // ИСПРАВЛЕНО: присоединяемся к лобби для получения обновлений
+    socket.emit('join-room', 'battle-lobby');
+    socket.emit('get-battle-games');
+
+    // ИСПРАВЛЕНО: регулярно запрашиваем обновления
+    const updateInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('get-battle-games');
+      }
+    }, 2000);
+
+    return () => {
+      clearInterval(updateInterval);
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('battle-games');
+      socket.off('joined-game');
+      socket.off('join-failed');
+      socket.off('game-state');
+      socket.off('startDrawing');
+      socket.off('error');
+      socket.emit('leave-room', 'battle-lobby');
+    };
+  }, [socket, navigate, joinedGameId]);
+
+  const handleJoinGame = (lobbyId) => {
     if (!socket?.connected) {
       alert('Нет соединения с сервером, попробуйте позже');
       return;
     }
     setIsLoading(true);
-    setGames((prevGames) =>
-      prevGames.map((game) =>
-        game.id === gameId && !game.players.includes(ownId)
-          ? { ...game, players: [...game.players, ownId] }
-          : game
-      )
-    );
-    setJoinedGameId(gameId);
-    socket.emit('join-battle-game', { gameId });
+    console.log('Attempting to join game:', lobbyId);
+    socket.emit('join-battle-game', { lobbyId });
   };
 
   const handleLeaveGame = (gameId) => {
@@ -173,22 +140,17 @@ const BattleMenuModal = ({ onClose, socket }) => {
       alert('Нет соединения с сервером, попробуйте позже');
       return;
     }
-    const game = games.find((g) => g.id === gameId);
-    if (game && game.state === 'countdown') {
-      alert('Нельзя покинуть игру во время отсчета!');
-      return;
-    }
     socket.emit('leave-battle-game', { gameId });
+    socket.emit('leave-room', `game_${gameId}`);
     setJoinedGameId(null);
-    setCountdown(null);
   };
 
   return (
     <div className="BattleMenuModal__container">
       <div className="BattleMenuModal__logo">
-        <h1>Battles</h1>
+        <h1>Баттлы</h1>
         <div className="BattleMenuModal__close">
-          <button onClick={onClose}>Close</button>
+          <button onClick={onClose}>Закрыть</button>
         </div>
       </div>
       <div className="BattleMenuModal__content">
@@ -198,23 +160,32 @@ const BattleMenuModal = ({ onClose, socket }) => {
           </h4>
           <div className="BattleMenuModal__current-games">
             {games
-              .sort((a, b) => a.id.localeCompare(b.id))
-              .map((game, index) => (
+              .sort((a, b) => a.lobbyId.localeCompare(b.lobbyId))
+              .map((game) => (
                 <div key={game.id} className="BattleMenuModal__game">
                   <p>
-                    Игра {index + 1} - Статус: {game.state}
+                    Лобби {game.lobbyId} - Статус:{' '}
+                    {game.status === 'waiting'
+                      ? 'Ожидание'
+                      : game.status === 'countdown'
+                      ? `Начинается через ${game.countdown} сек`
+                      : game.status === 'drawing'
+                      ? 'Идёт игра'
+                      : game.status === 'evaluation'
+                      ? 'Голосование'
+                      : 'Завершена'}
                   </p>
                   <GamePhoto players={game.players || []} />
                   {joinedGameId === game.id ? (
                     <>
                       <p>
-                        {game.state === 'countdown'
-                          ? `Игра начнётся через ${countdown} секунд`
-                          : game.state === 'drawing'
+                        {game.status === 'countdown'
+                          ? `Игра начнётся через ${game.countdown} секунд`
+                          : game.status === 'drawing'
                           ? 'Игра в процессе'
-                          : game.state === 'evaluation'
-                          ? 'Оценка рисунков'
-                          : game.state === 'finished'
+                          : game.status === 'evaluation'
+                          ? 'Голосование'
+                          : game.status === 'finished'
                           ? 'Игра завершена'
                           : 'Ожидание игроков...'}
                       </p>
@@ -222,15 +193,26 @@ const BattleMenuModal = ({ onClose, socket }) => {
                         Отключиться
                       </button>
                     </>
-                  ) : game.state === 'waiting' ? (
-                    <button
-                      onClick={() => handleJoinGame(game.id)}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Подключаемся...' : 'Подключиться'}
-                    </button>
                   ) : (
-                    <p>Игра уже началась</p>
+                    // ИСПРАВЛЕНО: разрешаем вход во время countdown если есть место
+                    (game.status === 'waiting' || game.status === 'countdown') && 
+                    game.players.length < 8 && 
+                    !game.players.includes(ownId) ? (
+                      <button
+                        onClick={() => handleJoinGame(game.lobbyId)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Подключаемся...' : 'Подключиться'}
+                      </button>
+                    ) : (
+                      <p>
+                        {game.players.includes(ownId) 
+                          ? 'Вы уже в этой игре' 
+                          : game.players.length >= 8 
+                          ? 'Игра заполнена' 
+                          : 'Игра уже началась'}
+                      </p>
+                    )
                   )}
                 </div>
               ))}
@@ -238,7 +220,10 @@ const BattleMenuModal = ({ onClose, socket }) => {
         </div>
         <div className="BattleMenuModal__random-game__container">
           <h4>Случайная игра</h4>
-          <button onClick={() => handleJoinGame('random')} disabled={isLoading}>
+          <button
+            onClick={() => handleJoinGame('random')}
+            disabled={isLoading}
+          >
             {isLoading ? 'Подключаемся...' : 'Подключиться'}
           </button>
         </div>

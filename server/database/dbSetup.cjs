@@ -1,5 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
+const {
+  generateUniqueIdentifier,
+} = require('../utils/functions/generators.cjs');
 const db = new sqlite3.Database('./canvas.db');
 
 db.serialize(() => {
@@ -7,6 +10,8 @@ db.serialize(() => {
     `CREATE TABLE IF NOT EXISTS Users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
+        pendingEmail TEXT,
+        pendingEmailConfirmationCode TEXT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         confirmationCode TEXT,
@@ -17,45 +22,46 @@ db.serialize(() => {
         uniqueIdentifier TEXT UNIQUE,
         subscription INTEGER DEFAULT 0,
         placedPixels INTEGER DEFAULT 0,
-        coins INTEGER DEFAULT 0
+        coins INTEGER DEFAULT 0,
+        userPixelUpdateTime INTEGER DEFAULT 5,
+        authToken TEXT,
+        authTokenExpires INTEGER,
+        colorsUsed TEXT DEFAULT '',
     )`,
     () => {}
   );
   //canvas-1
   db.run(`
     CREATE TABLE IF NOT EXISTS Canvas (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
       x INTEGER,
       y INTEGER,
-      color TEXT,
+      color INTEGER,
       userId TEXT,
-      UNIQUE(x, y),
-      FOREIGN KEY(userId) REFERENCES Users(id)
-    )
+      created_at TEXT DEFAULT (datetime('now', '+3 hours')),
+      PRIMARY KEY (x, y)
+    ) WITHOUT ROWID;
   `);
   //canvas-2
   db.run(`
     CREATE TABLE IF NOT EXISTS Canvas2 (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
       x INTEGER,
       y INTEGER,
-      color TEXT,
+      color INTEGER,
       userId TEXT,
-      UNIQUE(x, y),
-      FOREIGN KEY(userId) REFERENCES Users(id)
-    )
+      created_at TEXT DEFAULT (datetime('now', '+3 hours')),
+      PRIMARY KEY (x, y)
+    ) WITHOUT ROWID;
   `);
   //canvas-3
   db.run(`
     CREATE TABLE IF NOT EXISTS Canvas3 (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
       x INTEGER,
       y INTEGER,
-      color TEXT,
+      color INTEGER,
       userId TEXT,
-      UNIQUE(x, y),
-      FOREIGN KEY(userId) REFERENCES Users(id)
-    )
+      created_at TEXT DEFAULT (datetime('now', '+3 hours')),
+      PRIMARY KEY (x, y)
+    ) WITHOUT ROWID;
   `);
   //single-player
   // db.run(`
@@ -361,6 +367,21 @@ db.serialize(() => {
     END;
   `);
 
+  //5
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS update_fifthAchive
+    AFTER UPDATE OF colorsUsed ON Users
+    FOR EACH ROW
+    WHEN (
+      LENGTH(NEW.colorsUsed) - LENGTH(REPLACE(NEW.colorsUsed, ',', '')) + 1 > 49
+    )
+    BEGIN
+      UPDATE Achievements
+      SET fifthAchive = 1
+      WHERE username = NEW.username;
+    END;
+  `);
+
   db.run(`
     INSERT OR IGNORE INTO Achievements (username)
     SELECT username FROM Users;
@@ -397,40 +418,102 @@ db.serialize(() => {
     END;
   `);
 
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS update_user_colors_used
+    AFTER INSERT ON Canvas
+    WHEN NEW.color IS NOT NULL AND NEW.userId IS NOT NULL
+    BEGIN
+        UPDATE Users 
+        SET colorsUsed = (
+            SELECT GROUP_CONCAT(DISTINCT color)
+            FROM (
+                SELECT color FROM Canvas WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas2 WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas3 WHERE userId = NEW.userId AND color IS NOT NULL
+            )
+            WHERE color IS NOT NULL
+        )
+        WHERE uniqueIdentifier = NEW.userId;
+    END;
+  `);
+
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS update_user_colors_used_canvas2
+    AFTER INSERT ON Canvas2
+    WHEN NEW.color IS NOT NULL AND NEW.userId IS NOT NULL
+    BEGIN
+        UPDATE Users 
+        SET colorsUsed = (
+            SELECT GROUP_CONCAT(DISTINCT color)
+            FROM (
+                SELECT color FROM Canvas WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas2 WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas3 WHERE userId = NEW.userId AND color IS NOT NULL
+            )
+            WHERE color IS NOT NULL
+        )
+        WHERE uniqueIdentifier = NEW.userId;
+    END;
+  `);
+
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS update_user_colors_used_canvas3
+    AFTER INSERT ON Canvas3
+    WHEN NEW.color IS NOT NULL AND NEW.userId IS NOT NULL
+    BEGIN
+        UPDATE Users 
+        SET colorsUsed = (
+            SELECT GROUP_CONCAT(DISTINCT color)
+            FROM (
+                SELECT color FROM Canvas WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas2 WHERE userId = NEW.userId AND color IS NOT NULL
+                UNION
+                SELECT color FROM Canvas3 WHERE userId = NEW.userId AND color IS NOT NULL
+            )
+            WHERE color IS NOT NULL
+        )
+        WHERE uniqueIdentifier = NEW.userId;
+    END;
+  `);
+
   //id generator
-  const generateUniqueIdentifier = () => {
-    const chars =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let identifier = '';
-    for (let i = 0; i < 10; i++) {
-      identifier += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return identifier;
-  };
-  //admin account
+  // const generateUniqueIdentifier = () => {
+  //   const chars =
+  //     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  //   let identifier = '';
+  //   for (let i = 0; i < 10; i++) {
+  //     identifier += chars.charAt(Math.floor(Math.random() * chars.length));
+  //   }
+  //   return identifier;
+  // };
+  // admin account
   bcrypt.hash('Qwe12345!', 10, (err, hashedPassword) => {
     const uniqueIdentifier = generateUniqueIdentifier();
     const hashedIdentifier = bcrypt.hashSync(uniqueIdentifier, 10);
     db.run(
-      `INSERT OR IGNORE INTO Users 
-         (email, username, password, confirmationCode, isVerified, canPlacePixel, pixelCount, maxPixelCount, subscription, uniqueIdentifier) 
+      `INSERT OR IGNORE INTO Users
+         (email, username, password, confirmationCode, isVerified, canPlacePixel, pixelCount, maxPixelCount, subscription, uniqueIdentifier)
          VALUES ('nekita118118@gmail.com', 'Nikita111', ?, '', 1, 1, 100, 100, 0, ?)`,
       [hashedPassword, hashedIdentifier],
       () => {}
     );
   });
-  bcrypt.hash('qwe123123!', 10, (err, hashedPassword) => {
-    const uniqueIdentifier = generateUniqueIdentifier();
-    const hashedIdentifier = bcrypt.hashSync(uniqueIdentifier, 10);
-    db.run(
-      `INSERT OR IGNORE INTO Users 
-         (email, username, password, confirmationCode, isVerified, canPlacePixel, pixelCount, maxPixelCount, subscription, uniqueIdentifier) 
-         VALUES ('test@test.com', 'nekitka', ?, '', 1, 1, 100, 100, 0, ?)`,
-      [hashedPassword, hashedIdentifier],
-      () => {}
-    );
-  });
+  // bcrypt.hash('qwe123123!', 10, (err, hashedPassword) => {
+  //   const uniqueIdentifier = generateUniqueIdentifier();
+  //   const hashedIdentifier = bcrypt.hashSync(uniqueIdentifier, 10);
+  //   db.run(
+  //     `INSERT OR IGNORE INTO Users
+  //        (email, username, password, confirmationCode, isVerified, canPlacePixel, pixelCount, maxPixelCount, subscription, uniqueIdentifier)
+  //        VALUES ('test@test.com', 'nekitka', ?, '', 1, 1, 100, 100, 0, ?)`,
+  //     [hashedPassword, hashedIdentifier],
+  //     () => {}
+  //   );
+  // });
 });
-
 
 module.exports = db;

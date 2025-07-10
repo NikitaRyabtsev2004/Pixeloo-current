@@ -1,10 +1,11 @@
+/* eslint-disable linebreak-style */
 /* eslint-disable no-console */
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
+const { logger } = require('../../utils/libs/logger.cjs');
 
-// Кэш для статусов платежей
 const paymentCache = new Map();
-const CACHE_TTL = 60000; // Время жизни кэша (1 минута)
+const CACHE_TTL = 120000;
 
 const createPayment = async (req, res) => {
   const { amount, description } = req.body;
@@ -19,7 +20,7 @@ const createPayment = async (req, res) => {
     description: description,
     confirmation: {
       type: 'redirect',
-      return_url: 'https://pixeloo.ru/payment-success',
+      return_url: `${process.env.CLIENT_URL}`,
     },
     capture: true,
   };
@@ -39,13 +40,13 @@ const createPayment = async (req, res) => {
         },
       }
     );
-    console.log('Создан платеж с ID:', response.data.id);
+    logger.info('Создан платеж с ID:', response.data.id);
     res.status(200).json({
       paymentId: response.data.id,
       confirmationUrl: response.data.confirmation.confirmation_url,
     });
   } catch (error) {
-    console.error(
+    logger.error(
       'Ошибка при создании платежа:',
       error.response?.data || error.message
     );
@@ -59,7 +60,7 @@ const checkPayment = async (req, res) => {
   // Проверяем наличие статуса в кэше
   const cachedPayment = paymentCache.get(paymentId);
   if (cachedPayment && Date.now() - cachedPayment.timestamp < CACHE_TTL) {
-    console.log(`Возврат статуса платежа ID: ${paymentId} из кэша`);
+    logger.info(`Возврат статуса платежа ID: ${paymentId} из кэша`);
     return res.status(200).json({ status: cachedPayment.status });
   }
 
@@ -80,14 +81,14 @@ const checkPayment = async (req, res) => {
     // Сохраняем статус в кэш
     paymentCache.set(paymentId, { status, timestamp: Date.now() });
 
-    console.log(`Платеж ID: ${paymentId} проверен успешно. Статус: ${status}`);
+    logger.info(`Платеж ID: ${paymentId} проверен успешно. Статус: ${status}`);
 
     // Возвращаем статус платежа
     res.status(200).json({ status });
   } catch (error) {
     // Логируем ошибку и возвращаем клиенту сообщение
     const errorMessage = error.response?.data || error.message;
-    console.error(
+    logger.error(
       `Ошибка при проверке статуса платежа ID: ${paymentId}`,
       errorMessage
     );

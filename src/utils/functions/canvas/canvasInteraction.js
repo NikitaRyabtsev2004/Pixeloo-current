@@ -36,8 +36,11 @@ export const handlePixelClick = (
     showAuthenticationRequiredNotification,
     showOutOfPixelsNotification,
     isSoundsOn,
+    canvasSize,
   }
 ) => {
+  const adjustedX = Math.floor((x - offset.x) / (PIXEL_SIZE * scale));
+  const adjustedY = Math.floor((y - offset.y) / (PIXEL_SIZE * scale));
 
   if (!isAuthenticated || !localStorage.getItem('uniqueIdentifier')) {
     showAuthenticationRequiredNotification();
@@ -57,23 +60,37 @@ export const handlePixelClick = (
     return;
   }
 
+  if (
+    adjustedX < 0 ||
+    adjustedY < 0 ||
+    adjustedX >= canvasSize.width ||
+    adjustedY >= canvasSize.height ||
+    !Number.isInteger(adjustedX) ||
+    !Number.isInteger(adjustedY)
+  ) {
+    return;
+  }
+
+  const isSinglePlayerGame = window.location.pathname === '/single-player-game';
+
   playSoundCanvas(0.2, isSoundsOn);
-  setCanDraw(false);
-  setRemainingTime(350);
 
-  const interval = setInterval(() => {
-    setRemainingTime((prev) => {
-      if (prev <= 100) {
-        clearInterval(interval);
-        setCanDraw(true);
-        return 0;
-      }
-      return prev - 100;
-    });
-  }, 100);
+  if (!isSinglePlayerGame) {
+    setCanDraw(false);
+    setRemainingTime(500);
 
-  const adjustedX = Math.floor((x - offset.x) / (PIXEL_SIZE * scale));
-  const adjustedY = Math.floor((y - offset.y) / (PIXEL_SIZE * scale));
+    const interval = setInterval(() => {
+      setRemainingTime((prev) => {
+        if (prev <= 100) {
+          clearInterval(interval);
+          setCanDraw(true);
+          return 0;
+        }
+        return prev - 100;
+      });
+    }, 100);
+  }
+
   const color = selectedColor;
 
   dispatch(addRecentColor(color));
@@ -88,10 +105,12 @@ export const handlePixelClick = (
   dirtyPixels.push(newPixel);
 
   setPixels((prevPixels) => {
-    const newPixels = prevPixels.map((row) => [...row]);
-    if (newPixels[adjustedY] && newPixels[adjustedX]) {
-      newPixels[adjustedY][adjustedX] = newPixel.color;
+    if (!prevPixels[adjustedY] || !prevPixels[adjustedY][adjustedX]) {
+      return prevPixels; 
     }
+    const newPixels = [...prevPixels];
+    newPixels[adjustedY] = [...newPixels[adjustedY]];
+    newPixels[adjustedY][adjustedX] = newPixel.color;
     return newPixels;
   });
 

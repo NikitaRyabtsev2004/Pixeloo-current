@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import CubeRotation from './Cube.jsx';
 
 function Circle() {
-  const [x, setX] = useState(6);
-  const [y, setY] = useState(2);
-  const [z, setZ] = useState(4);
-  const [cX, setCX] = useState(0);
-  const [cY, setCY] = useState(0);
+  const [x] = useState(6);
+  const [y] = useState(2);
+  const [z] = useState(4);
+  const [cX] = useState(0);
+  const [cY] = useState(0);
 
   // useEffect(() => {
   //   const int1 = setInterval(() => {

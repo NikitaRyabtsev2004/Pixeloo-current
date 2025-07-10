@@ -9,6 +9,7 @@ const Account = ({ onBack, socket }) => {
   const [usernameChangeMode, setUsernameChangeMode] = useState(false);
   const [emailChangeMode, setEmailChangeMode] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState('');
+  const [newEmailConfirmationCode, setNewEmailConfirmationCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newUsername, setNewUsername] = useState('');
@@ -55,14 +56,14 @@ const Account = ({ onBack, socket }) => {
     }
   }, [isDisabled]);
 
-  const handleSendCode = async () => {
+  const handleSendCode = async (operation) => {
     setIsDisabled(true);
     setTimer(30);
     try {
       const response = await fetch(`${API_URL}/srv/auth/reset-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: emailChangeMode && emailUpdatePhase === 2 ? newEmail : email, operation }),
       });
       const result = await response.json();
       if (response.ok) {
@@ -136,14 +137,22 @@ const Account = ({ onBack, socket }) => {
         body: JSON.stringify({
           oldEmail: email,
           newEmail,
-          confirmationCode,
+          confirmationCode: emailUpdatePhase === 1 ? confirmationCode : undefined,
+          newEmailConfirmationCode: emailUpdatePhase === 2 ? newEmailConfirmationCode : undefined,
+          phase: emailUpdatePhase,
         }),
       });
       const result = await response.json();
       if (response.ok) {
-        setStatusMessage('Почта успешно изменена');
-        setEmail(newEmail);
-        resetEmailForm();
+        if (emailUpdatePhase === 1) {
+          setEmailUpdatePhase(2);
+          setConfirmationCode('');
+          setStatusMessage('Код отправлен на новую почту');
+        } else {
+          setStatusMessage('Почта успешно изменена');
+          setEmail(newEmail);
+          resetEmailForm();
+        }
       } else {
         setStatusMessage(result.message);
       }
@@ -173,6 +182,7 @@ const Account = ({ onBack, socket }) => {
     setEmailChangeMode(false);
     setCodeSent(false);
     setConfirmationCode('');
+    setNewEmailConfirmationCode('');
     setNewEmail('');
     setStatusMessage('');
     setEmailUpdatePhase(1);
@@ -201,7 +211,7 @@ const Account = ({ onBack, socket }) => {
             </>
           )}
           {isOpen && (
-            <>
+            <div className='Account-edit-menu'>
               <button onClick={() => setUsernameChangeMode(true)}>
                 Сменить никнейм
               </button>
@@ -211,7 +221,7 @@ const Account = ({ onBack, socket }) => {
               <button onClick={() => setEmailChangeMode(true)}>
                 Сменить почту
               </button>
-            </>
+            </div>
           )}
           <div className="menu__switch__buttons">
             <button onClick={onBack}>Назад</button>
@@ -223,7 +233,7 @@ const Account = ({ onBack, socket }) => {
           {!codeSent ? (
             <>
               <p>Код будет отправлен на почту: {email}</p>
-              <button onClick={handleSendCode} disabled={isDisabled}>
+              <button onClick={() => handleSendCode('password-reset')} disabled={isDisabled}>
                 {isDisabled ? `Отправить код (${timer})` : 'Отправить код'}
               </button>
               <button onClick={resetPasswordForm}>Отмена</button>
@@ -260,7 +270,7 @@ const Account = ({ onBack, socket }) => {
           {!codeSent ? (
             <>
               <p>Код будет отправлен на почту: {email}</p>
-              <button onClick={handleSendCode} disabled={isDisabled}>
+              <button onClick={() => handleSendCode('username-change')} disabled={isDisabled}>
                 {isDisabled ? `Отправить код (${timer})` : 'Отправить код'}
               </button>
               <button onClick={resetUsernameForm}>Отмена</button>
@@ -291,14 +301,14 @@ const Account = ({ onBack, socket }) => {
           {emailUpdatePhase === 1 ? (
             <>
               <p>Код будет отправлен на текущую почту: {email}</p>
-              <button onClick={handleSendCode} disabled={isDisabled}>
+              <button onClick={() => handleSendCode('email-change')} disabled={isDisabled}>
                 {isDisabled ? `Отправить код (${timer})` : 'Отправить код'}
               </button>
               {codeSent && (
                 <>
                   <input
                     type="text"
-                    placeholder="Код подтверждения"
+                    placeholder="Код подтверждения для текущей почты"
                     value={confirmationCode}
                     onChange={(e) => setConfirmationCode(e.target.value)}
                   />
@@ -311,21 +321,33 @@ const Account = ({ onBack, socket }) => {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await fetch(
-                          `${API_URL}/srv/auth/reset-code`,
-                          {
+                        const response = await fetch(`${API_URL}/srv/auth/reset-code`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: newEmail, operation: 'email-change-new' }),
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                          // Store the new email confirmation code
+                          await fetch(`${API_URL}/srv/auth/update-email`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: newEmail }),
-                          }
-                        );
-                        if (response.ok) {
+                            body: JSON.stringify({
+                              oldEmail: email,
+                              newEmail,
+                              confirmationCode,
+                              newEmailConfirmationCode: result.confirmationCode, // Assuming the server returns the code
+                              phase: 1,
+                            }),
+                          });
                           setEmailUpdatePhase(2);
                           setConfirmationCode('');
                           setStatusMessage('Код отправлен на новую почту');
+                        } else {
+                          setStatusMessage(result.message || 'Ошибка отправки кода');
                         }
                       } catch (error) {
-                        setStatusMessage('Ошибка отправки кода');
+                        setStatusMessage('Ошибка соединения');
                       }
                     }}
                   >
@@ -337,16 +359,13 @@ const Account = ({ onBack, socket }) => {
             </>
           ) : (
             <>
-              <p>Код отправлен на новую почту: {newEmail}</p>
               <input
                 type="text"
-                placeholder="Код подтверждения"
-                value={confirmationCode}
-                onChange={(e) => setConfirmationCode(e.target.value)}
+                placeholder="Код подтверждения для новой почты"
+                value={newEmailConfirmationCode}
+                onChange={(e) => setNewEmailConfirmationCode(e.target.value)}
               />
-              <button onClick={handleUpdateEmail}>
-                Подтвердить смену почты
-              </button>
+              <button onClick={handleUpdateEmail}>Подтвердить смену почты</button>
               <button onClick={resetEmailForm}>Отмена</button>
             </>
           )}

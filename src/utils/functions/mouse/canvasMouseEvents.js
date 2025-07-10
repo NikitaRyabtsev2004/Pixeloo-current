@@ -8,7 +8,7 @@ export const handleCanvasClick = (e, isDragging, handlePixelClick) => {
 };
 
 export const handleMouseDown = (e, setIsDragging, setDragStart) => {
-  if (e.button === 0 || e.button === 1 || e.button === 2) {
+  if (e.button === 1 || e.button === 2) {
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
   }
@@ -63,8 +63,7 @@ export const handleMouseMove = (
     y < pixels.length &&
     x >= 0 &&
     x < pixels[0].length &&
-    pixels[y][x] &&
-    pixels[y][x] !== '#FFFFFF'
+    pixels[y][x]
   ) {
     socket.emit('get-username', { x, y }, (response) => {
       if (response && response.success) {

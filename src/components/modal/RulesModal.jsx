@@ -9,7 +9,7 @@ const RulesModal = () => {
   const isOpen = useSelector((state) => state.rulesModal.isOpen);
   const modalContentRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   useEffect(() => {
     if (modalContentRef.current) {
@@ -46,7 +46,7 @@ const RulesModal = () => {
           <p
             key={index}
             className={
-              rule.startsWith("Запрещено") || rule.includes("Прошу")
+              rule.startsWith("Запрещено") || rule.includes("Просьба")
                 ? "rules-modal__highlight"
                 : "rules-modal__text"
             }
