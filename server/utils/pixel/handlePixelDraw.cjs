@@ -46,15 +46,10 @@ async function handlePixelDraw(
             logger.error(`Error ensuring SinglePlayer table ${tableName}: ${err.message}`);
             return reject(err);
           }
-          //? logger.info(`SinglePlayer table ${tableName} ensured to exist`);
           resolve();
         });
       });
     }
-
-    //? logger.info(
-    //?   `Drawing pixel: table=${tableName}, x=${x}, y=${y}, color=${color}, userId=${userId}, route=${route}`
-    //? );
 
     await new Promise((resolve, reject) => {
       db.get(
@@ -74,7 +69,7 @@ async function handlePixelDraw(
 
           const params = row ? [color, userId, x, y] : [x, y, color, userId];
 
-          db.run(query, params, (err) => {
+          db.run(query, params, function(err) {
             if (err) {
               logger.error(
                 `Error executing query in ${tableName}: ${err.message}`
@@ -82,24 +77,35 @@ async function handlePixelDraw(
               return reject(err);
             }
 
-            //? logger.info(`Pixel successfully saved to ${tableName}: x=${x}, y=${y}, color=${color}`);
+            db.run(
+              `UPDATE Users SET lastPixelX = ?, lastPixelY = ? WHERE uniqueIdentifier = ?`,
+              [x, y, userId],
+              function(err) {
+                if (err) {
+                  logger.error(
+                    `Error updating lastPixelX and lastPixelY for user ${userId}: ${err.message}`
+                  );
+                  return reject(err);
+                }
 
-            const roomName =
-              route === '/single-player-game'
-                ? `single_${uniqueIdentifier}`
-                : route === '/canvas-1'
-                  ? 'canvas1'
-                  : route === '/canvas-2'
-                    ? 'canvas2'
-                    : 'canvas3';
+                const roomName =
+                  route === '/single-player-game'
+                    ? `single_${uniqueIdentifier}`
+                    : route === '/canvas-1'
+                      ? 'canvas1'
+                      : route === '/canvas-2'
+                        ? 'canvas2'
+                        : 'canvas3';
 
-            io.to(roomName).emit(
-              route === '/single-player-game'
-                ? 'pixel-drawn-single'
-                : `pixel-drawn-${route.slice(-1)}`,
-              [{ x, y, color }]
+                io.to(roomName).emit(
+                  route === '/single-player-game'
+                    ? 'pixel-drawn-single'
+                    : `pixel-drawn-${route.slice(-1)}`,
+                  [{ x, y, color }]
+                );
+                resolve();
+              }
             );
-            resolve();
           });
         }
       );

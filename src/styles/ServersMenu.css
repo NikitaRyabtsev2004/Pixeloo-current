@@ -32,7 +32,7 @@
     }
 
     .servers:hover {
-        width: 122px;
+        width: 120px;
     }
 }
 
@@ -62,7 +62,7 @@
 
 .servers-modal-title {
     font-size: 20px;
-    color: #00ff00;
+    color: #bf7aff;
     margin-bottom: 20px;
 }
 
@@ -75,7 +75,7 @@
 
 .canvas-preview {
     background: #333333;
-    border: 2px solid #00ff00;
+    border: 2px solid #ab70ff;
     padding: 10px;
     width: 90%;
     cursor: pixelated;
@@ -157,6 +157,10 @@
 .server_button:hover .Subscription__info {
     background: #ce6535;
     color: white;
+}
+
+.SubscriptionModal__Content .server_button {
+    font-family: monospace;
 }
 
 .battle-button {

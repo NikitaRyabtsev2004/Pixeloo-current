@@ -1,0 +1,38 @@
+
+.color-dropdown-container {
+  position: relative;
+}
+
+.color-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 0px;
+  background-color: rgb(114, 114, 114);
+  border: 2px solid #000000;
+}
+
+.color-dropdown-toggle {
+  background-color: #f0f0f0;
+  border: 2px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.color-dropdown-toggle span {
+  font-size: 12px;
+}
+
+.color-input-group {
+  font-family: monospace;
+}
+
+.color-dropdown-container:hover .color__container {
+    transform: none;
+}

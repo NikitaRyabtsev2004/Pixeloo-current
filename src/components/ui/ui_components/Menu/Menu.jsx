@@ -8,7 +8,7 @@ import Revards from './Menu-folders/Revards';
 import Achievements from './Menu-folders/Achievements';
 import Account from './Menu-folders/Account';
 
-const Menu = ({ socket }) => {
+const Menu = ({ socket, coins }) => {
   const [isState, setIsState] = useState(0);
   const { isSoundsOn } = useSettings();
 
@@ -49,15 +49,19 @@ const Menu = ({ socket }) => {
           <Statistics
             onBack={() => back(setIsState, isSoundsOn)}
             socket={socket}
+            coins={coins}
           />
         </>
       ) : isState === 3 ? (
         <>
-          <Shop onBack={() => back(setIsState, isSoundsOn)} />
+          <Shop onBack={() => back(setIsState, isSoundsOn)} coins={coins} socket={socket}/>
         </>
       ) : isState === 4 ? (
         <>
-          <Revards onBack={() => back(setIsState, isSoundsOn)} />
+          <Revards
+            onBack={() => back(setIsState, isSoundsOn)}
+            socket={socket}
+          />
         </>
       ) : isState === 5 ? (
         <>

@@ -2,19 +2,9 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import useNotifications from '../../utils/helpers/notifications';
+import { useNotifications } from '../../utils/helpers/notifications';
 import PropTypes from 'prop-types';
-import {
-  PIXEL_SIZE,
-  S1_GRID_HEIGHT,
-  S1_GRID_WIDTH,
-  S2_GRID_HEIGHT,
-  S2_GRID_WIDTH,
-  S3_GRID_HEIGHT,
-  S3_GRID_WIDTH,
-  SINGLEPLAYER_GRID_HEIGHT,
-  SINGLEPLAYER_GRID_WIDTH,
-} from '../../utils/config/canvas-size';
+import { PIXEL_SIZE } from '../../utils/config/canvas-size';
 import config from '../../utils/config/config';
 import { addRecentColor } from '../../redux/slices/recentColorsSlice';
 import { ServerStatus } from '../ui/ServerStatus.jsx';
@@ -46,12 +36,12 @@ import { handlePixelClick } from '../../utils/functions/canvas/canvasInteraction
 import { useSettings } from '../../hooks/useSettings.js';
 import AchievementShow from '../ui/ui_components/Achievements/AchievementShow.jsx';
 import { useAchievements } from '../../hooks/useAchievements.js';
-import NotificationModal from '../modal/NotificationModal.jsx';
-import BattleGameModal from '../modal/BattleGameModal.jsx';
 import ServersMenu from '../modal/ServersModal.jsx';
 import { useCanvasSize } from '../../hooks/useCanvasSize.js';
 import { API_URL } from '../../utils/helpers/constants';
 import { logout } from '../../redux/slices/authSlice.js';
+import ContextMenu from '../../context/ContextMenu.jsx';
+import Chat from '../ui/Chat.jsx';
 
 const Canvas = ({ isAuthenticated }) => {
   const navigate = useNavigate();
@@ -65,7 +55,10 @@ const Canvas = ({ isAuthenticated }) => {
   let dirtyPixels = [];
   const [pixels, setPixels] = useState([]);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [userCount, setUserCount] = useState({ totalUsers: 0, totalConnections: 0 });
+  const [userCount, setUserCount] = useState({
+    totalUsers: 0,
+    totalConnections: 0,
+  });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -92,7 +85,7 @@ const Canvas = ({ isAuthenticated }) => {
   const showControlPanel = useSelector((state) => state.ui.showControlPanel);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const socketRef = useRef(null); // Храним сокет в useRef
+  const socketRef = useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(window.innerWidth);
   const [canvasHeight, setCanvasHeight] = useState(window.innerHeight);
   const [chunks, setChunks] = useState(new Map());
@@ -106,9 +99,20 @@ const Canvas = ({ isAuthenticated }) => {
     showConnectionRestoredNotification,
     showDonationAlert,
     showDonationMakeError,
-    showDonationSucces,
+    showDonationSuccess,
     showDonationError,
   } = useNotifications();
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+  const [mouseDownTime, setMouseDownTime] = useState(0);
+  const [secondsCount, setSecondsCount] = useState(0);
+  const [inputColor, setInputColor] = useState(false);
+  const [coins, setCoins] = useState(0);
+  const [userColors, setUserColors] = useState([]);
+  const uniqueIdentifier = localStorage.getItem('uniqueIdentifier');
 
   const canvasSize = useCanvasSize();
 
@@ -143,15 +147,27 @@ const Canvas = ({ isAuthenticated }) => {
   const handleMoveDown = () => moveDown(setOffset);
   const handleMoveLeft = () => moveLeft(setOffset);
   const handleMoveRight = () => moveRight(setOffset);
-  const handleDoPayment = (paymentAmount, pixelCount = null) =>
+  const handleDoPayment = (
+    paymentAmount,
+    pixelCount = null,
+    socket,
+    showDonationAlert,
+    showDonationMakeError,
+    showDonationSuccess,
+    showDonationError,
+    isColorSubscription = false,
+    coins
+  ) =>
     doPayment(
       paymentAmount,
       pixelCount,
-      socketRef.current,
+      socket,
       showDonationAlert,
       showDonationMakeError,
-      showDonationSucces,
-      showDonationError
+      showDonationSuccess,
+      showDonationError,
+      isColorSubscription,
+      coins
     );
 
   const refreshToken = useCallback(async () => {
@@ -192,17 +208,18 @@ const Canvas = ({ isAuthenticated }) => {
     const token = localStorage.getItem('authToken');
     const uniqueIdentifier = localStorage.getItem('uniqueIdentifier');
 
-    // Отключаем старый сокет, если он существует
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
 
     socketRef.current = io(serverUrl, {
+      path: '/socket.io',
+      transports: ['websocket'],
       auth: {
         token: token || null,
         uniqueIdentifier: uniqueIdentifier || null,
       },
-      reconnectionAttempts: 3, // Ограничиваем попытки переподключения
+      reconnectionAttempts: 3,
       reconnectionDelay: 1000,
     });
 
@@ -243,6 +260,11 @@ const Canvas = ({ isAuthenticated }) => {
         ? 'pixel-drawn-single'
         : `pixel-drawn-${serverNumber}`;
 
+    const pixelUndoEvent =
+      location.pathname === '/single-player-game'
+        ? 'pixel-undo-single'
+        : `pixel-undo-${serverNumber}`;
+
     socketRef.current.on(canvasEvent, (data) => {
       const canvasData = Array(canvasSize.height)
         .fill(null)
@@ -267,6 +289,19 @@ const Canvas = ({ isAuthenticated }) => {
           }
           return newPixels;
         });
+      });
+    });
+
+    socketRef.current.on(pixelUndoEvent, ({ x, y }) => {
+      setPixels((prevPixels) => {
+        const newPixels = [...prevPixels];
+        if (newPixels[y] && newPixels[y][x]) {
+          newPixels[y][x] = '#FFFFFF';
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          drawPixel(ctx, x, y, '#FFFFFF', scale, offset);
+        }
+        return newPixels;
       });
     });
 
@@ -301,17 +336,55 @@ const Canvas = ({ isAuthenticated }) => {
       });
     });
 
+    socketRef.current.on('user-seconds-data', (data) => {
+      if (!isAuthenticated) return;
+      setSecondsCount(data.userPixelUpdateTime);
+    });
+
+    socketRef.current.on('user-color-sub-data', (data) => {
+      if (!isAuthenticated) return;
+      if (data.isColorSubscription === 1) {
+        setInputColor(true);
+      }
+    });
+
+    socketRef.current.on('user-coins', (data) => {
+      if (!isAuthenticated) return;
+      setCoins(data.coins);
+    });
+
+    socketRef.current.on('user-colors', (data) => {
+      if (!isAuthenticated) return;
+      setUserColors(data.colors || []);
+    });
+
+    socketRef.current.on('color-subscription-update', (data) => {
+      if (!isAuthenticated) return;
+      setInputColor(data.isColorSubscription);
+    });
+
     socketRef.current.emit('route', window.location.pathname);
     if (location.pathname === '/single-player-game' && isAuthenticated) {
       socketRef.current.emit('route', '/single-player-game');
     }
-  }, [serverNumber, canvasSize, navigate, isAuthenticated, refreshToken, dispatch, isSoundsOn]);
+  }, [
+    serverNumber,
+    canvasSize,
+    navigate,
+    isAuthenticated,
+    refreshToken,
+    dispatch,
+    isSoundsOn,
+  ]);
 
   useEffect(() => {
     connectSocket();
-    const tokenRefreshInterval = setInterval(() => {
-      refreshToken();
-    }, 12 * 60 * 60 * 1000);
+    const tokenRefreshInterval = setInterval(
+      () => {
+        refreshToken();
+      },
+      12 * 60 * 60 * 1000
+    );
 
     return () => {
       clearInterval(tokenRefreshInterval);
@@ -327,8 +400,12 @@ const Canvas = ({ isAuthenticated }) => {
         socketRef.current.emit('get-max-pixel-count', (data) => {
           setMaxPixelCount(data.maxPixelCount || Infinity);
         });
+        socketRef.current.emit('user-increment-seconds');
+        socketRef.current.emit('get-color-input-sub');
+        socketRef.current.emit('get-coins');
+        socketRef.current.emit('get-user-colors');
       }
-    }, 5000);
+    }, 2500);
 
     const pixelInterval = setInterval(() => {
       if (isAuthenticated) {
@@ -443,7 +520,7 @@ const Canvas = ({ isAuthenticated }) => {
       setRemainingTime,
       setPixels,
       dispatch,
-      socketRef.current, // Добавляем socketRef.current в зависимости
+      socketRef.current,
       hoveredPixelColor,
       pixelCount,
       showAuthenticationRequiredNotification,
@@ -558,7 +635,10 @@ const Canvas = ({ isAuthenticated }) => {
     socketRef.current.on('max-pixel-count-update', handleMaxPixelCountUpdate);
 
     return () => {
-      socketRef.current.off('max-pixel-count-update', handleMaxPixelCountUpdate);
+      socketRef.current.off(
+        'max-pixel-count-update',
+        handleMaxPixelCountUpdate
+      );
     };
   }, [isAuthenticated]);
 
@@ -577,6 +657,33 @@ const Canvas = ({ isAuthenticated }) => {
     setIsModalOpen(false);
   };
 
+  useEffect(() => {
+  const handleWheel = (e) => {
+    if (
+      e.target.closest('.chat-container.chat-container-open') ||
+      e.target.closest('.bottom-left-panel___container')
+    ) {
+      return;
+    }
+    if (e.deltaY < 0) {
+      handleIncreaseScale();
+    } else if (e.deltaY > 0) {
+      handleDecreaseScale();
+    }
+  };
+
+  const container = containerRef.current;
+  if (container) {
+    container.addEventListener('wheel', handleWheel, { passive: false });
+  }
+
+  return () => {
+    if (container) {
+      container.removeEventListener('wheel', handleWheel);
+    }
+  };
+}, [handleIncreaseScale, handleDecreaseScale]);
+
   return (
     <div
       style={{
@@ -591,11 +698,14 @@ const Canvas = ({ isAuthenticated }) => {
         serverNumber={serverNumber}
         status={location.pathname === '/single-player-game' ? 'local' : status}
       />
-      <ServersMenu socket={socketRef.current} isAuthenticated={isAuthenticated} />
+      <ServersMenu
+        socket={socketRef.current}
+        isAuthenticated={isAuthenticated}
+      />
       <DonationButton
         amount={amount}
-        isOpen={isOpen}
         setAmount={setAmount}
+        isOpen={isOpen}
         setIsOpen={setIsOpen}
         handleDoPayment={handleDoPayment}
         isAuthenticated={isAuthenticated}
@@ -619,6 +729,11 @@ const Canvas = ({ isAuthenticated }) => {
                 DBmaxPixelCount={DBmaxPixelCount}
                 socket={socketRef.current}
                 doPayment={handleDoPayment}
+                showDonationAlert={showDonationAlert}
+                showDonationMakeError={showDonationMakeError}
+                showDonationSuccess={showDonationSuccess}
+                showDonationError={showDonationError}
+                inputColor={inputColor}
               />
             )}
             <CoordinateHint
@@ -638,6 +753,7 @@ const Canvas = ({ isAuthenticated }) => {
                 canDraw={canDraw}
                 remainingTime={remainingTime}
                 pixelCount={pixelCount}
+                secondsCount={secondsCount}
               />
             )}
           </h3>
@@ -660,12 +776,22 @@ const Canvas = ({ isAuthenticated }) => {
         closeModal={closeModal}
         isModalOpen={isModalOpen}
         imageUrl={imageUrl}
-        
+        inputColor={inputColor}
+        coins={coins}
+        userColors={userColors}
+      />
+      <Chat
+        socket={socketRef.current}
+        isAuthenticated={isAuthenticated}
+        uniqueIdentifier={uniqueIdentifier}
+        handleIncreaseScale={handleIncreaseScale}
+        handleDecreaseScale={handleDecreaseScale}
       />
       <div
         ref={containerRef}
         className="canvas__container"
         style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <canvas
           className="canvas__main"
@@ -674,11 +800,37 @@ const Canvas = ({ isAuthenticated }) => {
           height={canvasHeight}
           style={{ display: 'block' }}
           onClick={handleCanvasClickWrapper}
-          onMouseDown={(e) => handleMouseDown(e, setIsDragging, setDragStart)}
-          onMouseUp={(e) => handleMouseUp(e, setIsDragging)}
+          onMouseDown={(e) =>
+            handleMouseDown(e, setIsDragging, setDragStart, setMouseDownTime)
+          }
+          onMouseUp={(e) =>
+            handleMouseUp(
+              e,
+              setIsDragging,
+              isContextMenuOpen,
+              setIsContextMenuOpen,
+              setContextMenuPosition,
+              mouseDownTime
+            )
+          }
           onMouseMove={handleMouseMove}
-          onContextMenu={(e) => e.preventDefault()}
         />
+        {isAuthenticated && (
+          <>
+            {isContextMenuOpen && (
+              <ContextMenu
+                position={contextMenuPosition}
+                onClose={() => setIsContextMenuOpen(false)}
+                isAuthenticated={isAuthenticated}
+                selectedColor={selectedColor}
+                setSelectedColor={setSelectedColor}
+                socket={socketRef.current}
+                inputColor={inputColor}
+                userColors={userColors}
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const Statistics = ({ onBack, socket }) => {
+const Statistics = ({ onBack, socket, coins }) => {
   const [totalAmount, setTotalAmount] = useState();
   const [totalAmountCanvas1, setTotalAmountCanvas1] = useState();
   const [totalAmountCanvas2, setTotalAmountCanvas2] = useState();
@@ -24,12 +24,12 @@ const Statistics = ({ onBack, socket }) => {
     };
 
     const updateTotalAmountCanvas2 = (data) => {
-        setTotalAmountCanvas2(data.placedPixels);
-      };
+      setTotalAmountCanvas2(data.placedPixels);
+    };
 
-      const updateTotalAmountCanvas3 = (data) => {
-        setTotalAmountCanvas3(data.placedPixels);
-      };
+    const updateTotalAmountCanvas3 = (data) => {
+      setTotalAmountCanvas3(data.placedPixels);
+    };
 
     socket.on('placed-pixels-update', updateTotalAmount);
     socket.on('placed-pixels-update-canvas-1', updateTotalAmountCanvas1);
@@ -49,10 +49,26 @@ const Statistics = ({ onBack, socket }) => {
     <>
       <h3 className="Menu__logo">Statistics</h3>
       <div className="statistics">
-        <div>Общее кол-во: {totalAmount}</div>
-        <div>Canvas - 1: {totalAmountCanvas1}</div>
-        <div>Canvas - 2: {totalAmountCanvas2}</div>
-        <div>Canvas - 3: {totalAmountCanvas3}</div>
+        <div>
+          <span>Всего оставлено:</span> 
+          <span>{totalAmount}</span>
+        </div>
+        <div>
+          <span>Сервер 1:</span> 
+          <span>{totalAmountCanvas1}</span>
+        </div>
+        <div>
+          <span>Сервер 2:</span>
+          <span>{totalAmountCanvas2}</span>
+        </div>
+        <div>
+          <span>Сервер 3:</span> 
+          <span>{totalAmountCanvas3}</span>
+        </div>
+        <div>
+          <span>Coins:</span> 
+          <span>{coins}</span>
+        </div>
       </div>
       <div className="menu__switch__buttons">
         <button onClick={onBack}>Назад</button>

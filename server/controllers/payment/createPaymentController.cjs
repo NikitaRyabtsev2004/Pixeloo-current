@@ -8,7 +8,7 @@ const paymentCache = new Map();
 const CACHE_TTL = 120000;
 
 const createPayment = async (req, res) => {
-  const { amount, description } = req.body;
+  const { amount, description, isColorSubscription, coinsToAdd } = req.body;
 
   const idempotenceKey = uuidv4();
 
@@ -23,6 +23,7 @@ const createPayment = async (req, res) => {
       return_url: `${process.env.CLIENT_URL}`,
     },
     capture: true,
+    metadata: { isColorSubscription: !!isColorSubscription, coinsToAdd },
   };
 
   try {
@@ -44,6 +45,8 @@ const createPayment = async (req, res) => {
     res.status(200).json({
       paymentId: response.data.id,
       confirmationUrl: response.data.confirmation.confirmation_url,
+      isColorSubscription: !!isColorSubscription,
+      coinsToAdd,
     });
   } catch (error) {
     logger.error(
@@ -57,15 +60,17 @@ const createPayment = async (req, res) => {
 const checkPayment = async (req, res) => {
   const { paymentId } = req.params;
 
-  // Проверяем наличие статуса в кэше
   const cachedPayment = paymentCache.get(paymentId);
   if (cachedPayment && Date.now() - cachedPayment.timestamp < CACHE_TTL) {
     logger.info(`Возврат статуса платежа ID: ${paymentId} из кэша`);
-    return res.status(200).json({ status: cachedPayment.status });
+    return res.status(200).json({
+      status: cachedPayment.status,
+      isColorSubscription: cachedPayment.isColorSubscription,
+      coinsToAdd: cachedPayment.coinsToAdd,
+    });
   }
 
   try {
-    // Выполняем запрос к API YooKassa
     const response = await axios.get(
       `https://api.yookassa.ru/v3/payments/${paymentId}`,
       {
@@ -77,16 +82,21 @@ const checkPayment = async (req, res) => {
     );
 
     const status = response.data.status;
+    const isColorSubscription =
+      response.data.metadata?.isColorSubscription || false;
+    const coinsToAdd = response.data.metadata?.coinsToAdd || null;
 
-    // Сохраняем статус в кэш
-    paymentCache.set(paymentId, { status, timestamp: Date.now() });
+    paymentCache.set(paymentId, {
+      status,
+      timestamp: Date.now(),
+      isColorSubscription,
+      coinsToAdd,
+    });
 
     logger.info(`Платеж ID: ${paymentId} проверен успешно. Статус: ${status}`);
 
-    // Возвращаем статус платежа
-    res.status(200).json({ status });
+    res.status(200).json({ status, isColorSubscription, coinsToAdd });
   } catch (error) {
-    // Логируем ошибку и возвращаем клиенту сообщение
     const errorMessage = error.response?.data || error.message;
     logger.error(
       `Ошибка при проверке статуса платежа ID: ${paymentId}`,
@@ -100,7 +110,6 @@ const checkPayment = async (req, res) => {
   }
 };
 
-// Функция для очистки устаревших записей в кэше
 const clearOldCacheEntries = () => {
   const now = Date.now();
   for (const [key, value] of paymentCache.entries()) {
@@ -110,7 +119,6 @@ const clearOldCacheEntries = () => {
   }
 };
 
-// Запускаем очистку кэша каждые 5 минут
 setInterval(clearOldCacheEntries, 300000);
 
 module.exports = { createPayment, checkPayment };

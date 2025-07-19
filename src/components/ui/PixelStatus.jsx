@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-export const PixelStatus = ({ canDraw, remainingTime, pixelCount }) => (
+export const PixelStatus = ({ canDraw, remainingTime, pixelCount, secondsCount }) => (
   <>
     <div className="ready-bar__container">
       <div
@@ -15,10 +15,10 @@ export const PixelStatus = ({ canDraw, remainingTime, pixelCount }) => (
       </div>
     </div>
     <div className="pixel-amount__container">
-      <div className="pixel-amount__number">
+      <div style={{ fontFamily: 'monospace' }} className="pixel-amount__number">
         Количество: <div className="pixel-amount">{pixelCount}</div>
       </div>
-      <div>1PX в [5]сек</div>
+      <div style={{fontFamily:"monospace"}}>1PX в {secondsCount} сек</div>
     </div>
   </>
 );

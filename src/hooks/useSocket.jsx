@@ -9,7 +9,6 @@ const useSocket = ({ isBattleMode, gameId, serverNumber, pathname }) => {
   useEffect(() => {
     let serverUrl;
     if (isBattleMode) {
-      // Предполагаем, что gameId имеет формат "b1_xxx"
       const serverId = gameId.split('_')[0] || 'b1';
       serverUrl = config[`serverUrl_${serverId}`];
     } else if (pathname === '/single-player-game') {

@@ -9,10 +9,13 @@ export const ControlPanel = ({
   onMoveLeft,
   onMoveDown,
   onMoveRight,
+  isAuthenticated,
 }) => {
   if (!isVisible) return null;
   return (
-    <div className="control-buttons">
+    <div
+      className={`control-buttons ${isAuthenticated ? '' : 'nonAuth'}`}
+    >
       <button className="zoom-button plus" onClick={onIncreaseScale}>
         +
       </button>

@@ -40,7 +40,7 @@ export const UserSubscription = ({
         </>
       ) : (
         <button
-          className="server_button"
+          className="server_button sub"
           style={{ background: 'lightgray' }}
           onClick={() => setIsOpenSubscriptionButtonSound(true)}
         >

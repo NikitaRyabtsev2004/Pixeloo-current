@@ -99,10 +99,10 @@ const LeaderBoard = ({ socket }) => {
     <div className="LeaderBoard__container">
       <h2 className="LeaderBoard__logo">Leaders</h2>
       <div className="LeaderBoard__buttons">
-        <button onClick={() => handleLeaderBoardClick(1)}>All</button>
-        <button onClick={() => handleLeaderBoardClick(2)}>Canvas-1</button>
-        <button onClick={() => handleLeaderBoardClick(3)}>Canvas-2</button>
-        <button onClick={() => handleLeaderBoardClick(4)}>Canvas-3</button>
+        <button onClick={() => handleLeaderBoardClick(1)}>Всего</button>
+        <button onClick={() => handleLeaderBoardClick(2)}>Сервер 1</button>
+        <button onClick={() => handleLeaderBoardClick(3)}>Сервер 2</button>
+        <button onClick={() => handleLeaderBoardClick(4)}>Сервер 3</button>
       </div>
       <div className="LeaderBoard__title">
         <div>Place</div>

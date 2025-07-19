@@ -9,6 +9,11 @@ export const SubscribtionModal = ({
   DBmaxPixelCount,
   socket,
   doPayment,
+  showDonationAlert,
+  showDonationMakeError,
+  showDonationSuccess,
+  showDonationError,
+  inputColor,
 }) => {
   const { isSoundsOn } = useSettings();
 
@@ -19,9 +24,30 @@ export const SubscribtionModal = ({
   }
 
   const subscriptionOptions = [
-    { cost: 99, limit: 200, text: 'Увеличение лимита до 200PX' },
-    { cost: 179, limit: 300, text: 'Увеличение лимита до 300PX' },
-    { cost: 259, limit: 400, text: 'Увеличение лимита до 400PX' },
+    {
+      cost: 199,
+      limit: 200,
+      text: 'Увеличение лимита до 200PX',
+      upgrade: false,
+    },
+    {
+      cost: DBmaxPixelCount === 200 ? 209 : 389,
+      limit: 300,
+      text: 'Увеличение лимита до 300PX',
+      upgrade: DBmaxPixelCount === 200,
+    },
+    {
+      cost: DBmaxPixelCount === 300 ? 219 : DBmaxPixelCount === 200 ? 399 : 579,
+      limit: 400,
+      text: 'Увеличение лимита до 400PX',
+      upgrade: DBmaxPixelCount === 200 || DBmaxPixelCount === 300,
+    },
+    {
+      cost: 1599,
+      limit: null,
+      text: 'Color Selector (выбор любого цвета)',
+      isColorSubscription: true,
+    },
   ];
 
   const backSubscriptionModalSound = (state) => {
@@ -33,26 +59,39 @@ export const SubscribtionModal = ({
     setIsOpenSubscription(state);
   };
 
-  const paymentButtonSound = (cost, limit, socket) => {
+  const paymentButtonSound = (cost, limit, isColorSubscription = false) => {
     playSound(0.5, 'note-4.mp3', isSoundsOn);
-    doPayment(cost, limit, socket);
+    doPayment(
+      cost,
+      limit,
+      socket,
+      showDonationAlert,
+      showDonationMakeError,
+      showDonationSuccess,
+      showDonationError,
+      isColorSubscription
+    );
   };
 
   return (
     <div className="SubscriptionModal__Content">
-      {subscriptionOptions.map(
-        ({ cost, limit, text }) =>
-          DBmaxPixelCount < limit && (
-            <button
-              key={limit}
-              onClick={() => paymentButtonSound(cost, limit, socket)}
-              className="server_button"
-            >
-              <p className="Subscription__cost">Оформить подписку за {cost}₽</p>
-              <p className="Subscription__info">{text}</p>
-            </button>
-          )
-      )}
+      {subscriptionOptions
+        .filter(
+          ({ limit, isColorSubscription }) =>
+            (limit === null || DBmaxPixelCount < limit) && !(isColorSubscription && inputColor)
+        )
+        .map(({ cost, limit, text, isColorSubscription }) => (
+          <button
+            key={limit || 'colorSelector'}
+            onClick={() =>
+              paymentButtonSound(cost, limit, isColorSubscription)
+            }
+            className="server_button"
+          >
+            <p className="Subscription__cost">Оформить подписку за {cost}₽</p>
+            <p className="Subscription__info">{text}</p>
+          </button>
+        ))}
       <button
         onClick={() => backSubscriptionModalSound(false)}
         className="server_button"
@@ -69,4 +108,9 @@ SubscribtionModal.propTypes = {
   DBmaxPixelCount: PropTypes.number.isRequired,
   socket: PropTypes.object.isRequired,
   doPayment: PropTypes.func.isRequired,
+  showDonationAlert: PropTypes.func.isRequired,
+  showDonationMakeError: PropTypes.func.isRequired,
+  showDonationSuccess: PropTypes.func.isRequired,
+  showDonationError: PropTypes.func.isRequired,
+  inputColor: PropTypes.bool.isRequired,
 };

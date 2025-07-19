@@ -36,7 +36,7 @@ async function ensureImageDir() {
 
 async function generateCanvasImage(canvasName, dbTableName) {
   try {
-    logger.info(`Generating images for ${canvasName} at ${new Date().toISOString()}`);
+    //? logger.info(`Generating images for ${canvasName} at ${new Date().toISOString()}`);
     
     const canvas = createCanvas(CANVAS_SIZE, CANVAS_SIZE);
     const ctx = canvas.getContext('2d');

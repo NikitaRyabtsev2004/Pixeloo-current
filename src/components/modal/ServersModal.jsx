@@ -58,7 +58,7 @@ const ServersMenu = ({ socket, isAuthenticated }) => {
           {showServersModal && (
             <div className="servers-modal-overlay">
               <div className="servers-modal">
-                <h2 className="servers-modal-title">Select Game Mode</h2>
+                <h2 className="servers-modal-title">Сервера для игры</h2>
                 <div className="servers-modal-content">
                   <CanvasPreview
                     socket={socket}
@@ -105,7 +105,7 @@ const ServersMenu = ({ socket, isAuthenticated }) => {
                   className="servers-modal-close"
                   onClick={serversSoundButton}
                 >
-                  Close
+                  Закрыть
                 </button>
               </div>
             </div>

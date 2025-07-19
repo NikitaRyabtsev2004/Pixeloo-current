@@ -28,6 +28,9 @@ export const ColorSelector = ({
   closeModal,
   isModalOpen,
   imageUrl,
+  inputColor,
+  coins,
+  userColors
 }) => {
   const dispatch = useDispatch();
   const [isState, setState] = useState(1);
@@ -75,23 +78,10 @@ export const ColorSelector = ({
       }
     };
 
-    const handleWheel = (event) => {
-      if (event.target.closest('.bottom-left-panel___container')) {
-        return;
-      }
-      if (event.deltaY < 0) {
-        handleIncreaseScale();
-      } else {
-        handleDecreaseScale();
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('wheel', handleWheel);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('wheel', handleWheel);
     };
   }, [
     handleMoveUp,
@@ -121,82 +111,96 @@ export const ColorSelector = ({
     localStorage.setItem('HUDOpacity', isHudOpacity.toString());
   }, [isHudOpacity]);
 
-  return (
-    isAuthenticated && (
-      <div
-        style={{ opacity: isHudOpen ? 1 : isHudOpacity / 100 }}
-        className="bottom-left-panel___container"
-      >
-        {isState === 1 ? (
-          <>
-            <button
-              className="toggle__control__panel"
-              onClick={() => dispatch(toggleControlPanel({ isSoundsOn }))}
-            >
-              {showControlPanel ? 'Скрыть панель' : 'Показать панель'}
-            </button>
+  return isAuthenticated ? (
+    <div
+      style={{ opacity: isHudOpen ? 1 : isHudOpacity / 100 }}
+      className="bottom-left-panel___container"
+    >
+      {isState === 1 ? (
+        <>
+          <button
+            className="toggle__control__panel"
+            onClick={() => dispatch(toggleControlPanel({ isSoundsOn }))}
+          >
+            {showControlPanel ? 'Скрыть панель' : 'Показать панель'}
+          </button>
 
-            <ControlPanel
-              isVisible={showControlPanel}
-              onIncreaseScale={handleIncreaseScale}
-              onDecreaseScale={handleDecreaseScale}
-              onMoveUp={handleMoveUp}
-              onMoveLeft={handleMoveLeft}
-              onMoveDown={handleMoveDown}
-              onMoveRight={handleMoveRight}
-            />
+          <ControlPanel
+            isVisible={showControlPanel}
+            onIncreaseScale={handleIncreaseScale}
+            onDecreaseScale={handleDecreaseScale}
+            onMoveUp={handleMoveUp}
+            onMoveLeft={handleMoveLeft}
+            onMoveDown={handleMoveDown}
+            onMoveRight={handleMoveRight}
+            isAuthenticated={isAuthenticated}
+          />
 
-            <div>
-              <ImageUploader onImageUpload={handleImageUpload} />
-              {isModalOpen && (
-                <ImageModal imageUrl={imageUrl} onClose={closeModal} />
-              )}
+          <div>
+            <ImageUploader onImageUpload={handleImageUpload} />
+            {isModalOpen && (
+              <ImageModal imageUrl={imageUrl} onClose={closeModal} />
+            )}
+          </div>
+
+          <ColorPalette
+            selectedColor={selectedColor}
+            setSelectedColor={setSelectedColor}
+            inputColor={inputColor}
+            userColors={userColors}
+          />
+
+          <h3>Ваш цвет: {selectedColor}</h3>
+          {/* <h3>Недавние цвета:</h3>
+
+          <div className="recent__colors__container">
+            <div className="recent__colors">
+              {recentColors.map((color, index) => (
+                <div
+                  key={index}
+                  onClick={() => setSelectedColor(color)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setSelectedColor(color);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="recent__color"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
-
-            <ColorPalette
-              selectedColor={selectedColor}
-              setSelectedColor={setSelectedColor}
-            />
-
-            <h3>Ваш цвет: {selectedColor}</h3>
-            <h3>Недавние цвета:</h3>
-
-            <div className="recent__colors__container">
-              <div className="recent__colors">
-                {recentColors.map((color, index) => (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedColor(color)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setSelectedColor(color);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    className="recent__color"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        ) : isState === 2 ? (
-          <>
-            <LeaderBoard socket={socket} />
-          </>
-        ) : (
-          <>
-            <Menu socket={socket} />
-          </>
-        )}
-        <div className="bottom-left-panel___buttons-container">
-          <button onClick={() => to(setState, 1, isSoundsOn)}>Палитра</button>
-          <button onClick={() => to(setState, 2, isSoundsOn)}>Лидеры</button>
-          <button onClick={() => to(setState, 3, isSoundsOn)}>Меню</button>
-        </div>
+          </div> */}
+        </>
+      ) : isState === 2 ? (
+        <>
+          <LeaderBoard socket={socket} />
+        </>
+      ) : (
+        <>
+          <Menu socket={socket} coins={coins} />
+        </>
+      )}
+      <div className="bottom-left-panel___buttons-container">
+        <button onClick={() => to(setState, 1, isSoundsOn)}>Палитра</button>
+        <button onClick={() => to(setState, 2, isSoundsOn)}>Лидеры</button>
+        <button onClick={() => to(setState, 3, isSoundsOn)}>Меню</button>
       </div>
-    )
+    </div>
+  ) : (
+    <>
+      <ControlPanel
+        isVisible={showControlPanel}
+        onIncreaseScale={handleIncreaseScale}
+        onDecreaseScale={handleDecreaseScale}
+        onMoveUp={handleMoveUp}
+        onMoveLeft={handleMoveLeft}
+        onMoveDown={handleMoveDown}
+        onMoveRight={handleMoveRight}
+        isAuthenticated={isAuthenticated}
+      />
+    </>
   );
 };
 
@@ -213,4 +217,13 @@ ColorSelector.propTypes = {
   handleMoveDown: PropTypes.func.isRequired,
   handleMoveRight: PropTypes.func.isRequired,
   socket: PropTypes.object.isRequired,
+  handleImageUpload: PropTypes.func.isRequired,
+  closeModal: PropTypes.func.isRequired,
+  isModalOpen: PropTypes.bool.isRequired,
+  imageUrl: PropTypes.string,
+  inputColor: PropTypes.bool.isRequired,
+  coins: PropTypes.number.isRequired,
+  userColors: PropTypes.arrayOf(PropTypes.string).isRequired,
 };
+
+export default ColorSelector;

@@ -1,0 +1,47 @@
+.rewards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: scroll;
+  max-height: 250px;
+  width: 100%;
+}
+
+.reward-item {
+  background-color: #f0f0f0;
+  width: 100%;
+  height: auto;
+  font-family: monospace;
+}
+
+.reward-item.completed {
+  background-color: #d4edda;
+}
+
+.reward-item.claimed {
+  background-color: #28a745;
+  color: white;
+}
+
+.claim-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.claim-button.inactive {
+  filter: blur(2px);
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.claim-button.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.claim-button.active:hover {
+  background-color: #0056b3;
+}

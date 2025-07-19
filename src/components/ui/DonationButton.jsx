@@ -10,6 +10,12 @@ export const DonationButton = ({
   setIsOpen,
   handleDoPayment,
   isAuthenticated,
+  socket, 
+  showDonationAlert, 
+  showDonationMakeError, 
+  showDonationSuccess, 
+  showDonationError, 
+  coins,
 }) => {
   const style = {
     top: isAuthenticated ? '110px' : '10px',
@@ -27,7 +33,17 @@ export const DonationButton = ({
 
   const handleDoPaymentButtonSound = (amount) => {
     playSound(0.5, 'note-4.mp3', isSoundsOn);
-    handleDoPayment(parseFloat(amount));
+    handleDoPayment(
+      parseFloat(amount),
+      null,
+      socket,
+      showDonationAlert,
+      showDonationMakeError,
+      showDonationSuccess,
+      showDonationError,
+      false,
+      coins
+    );
   };
 
   return (
@@ -80,4 +96,10 @@ DonationButton.propTypes = {
   setIsOpen: PropTypes.func.isRequired,
   handleDoPayment: PropTypes.func.isRequired,
   isAuthenticated: PropTypes.bool.isRequired,
+  socket: PropTypes.object, 
+  showDonationAlert: PropTypes.func, 
+  showDonationMakeError: PropTypes.func,
+  showDonationSuccess: PropTypes.func,
+  showDonationError: PropTypes.func,
+  coins: PropTypes.number,
 };

@@ -153,6 +153,7 @@ h2 {
   transition: all 300ms ease-in-out;
   text-shadow: 0 0 0 #000000, 2px 0 0 #000000, -2px 0 0 #000000, 0 2px 0 #000000, 0 -2px 0 #000000;
   animation: infinite ease-in-out logo-animation 5s;
+  pointer-events: none;
 }
 
 .Logo_smile {
@@ -266,13 +267,17 @@ button {
   font-family: "Pixelify Sans", sans-serif;
   align-items: center;
   word-break: keep-all;
-  transition: all 300ms ease;
+  transition: all 200ms ease;
   background-color: #ffffff;
   color: rgb(0, 0, 0);
   border: none;
   padding: 10px;
   cursor: pointer;
   position: static;
+}
+
+button:hover {
+  transform: scale(1.03);
 }
 
 .buttons {
@@ -310,13 +315,14 @@ form {
 }
 
 .bottom-left-panel___container {
+  position: relative;
   position: fixed;
   bottom: 0px;
   color: black;
   left: 0px;
   background: rgba(153, 153, 153, 0.48);
   width: 200px;
-  z-index: 1;
+  z-index: 998;
 }
 
 .bottom-left-panel___buttons-container {
@@ -340,19 +346,29 @@ form {
 }
 
 .color__selector {
-  position: absolute;
   width: 50px;
   height: 50px;
   cursor: pointer;
-  margin-top: 10px;
-  right: 5px;
+  margin: 5px 0 5px 5px;
+}
+
+.colors__pallete__container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.colors__pallete__container p {
+  margin: 5px;
+  padding: 0;
 }
 
 .colors__pallete {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  width: 140px;
+  display: grid;
+  grid-template-columns: repeat(5, 25px);
+  grid-template-rows: repeat(2, 30px);
+  gap: 0px;
 }
 
 .color__container {
@@ -360,19 +376,21 @@ form {
   height: 20px;
   cursor: pointer;
   margin: 2px;
+  transition: all 100ms ease-in-out;
+}
+
+.color__container:hover {
+  transform: scale(1.07);
 }
 
 .rules-modal,
 .SubscriptionModal__Content {
   text-align: justify;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   position: fixed;
   top: 50%;
   left: 50%;
+  width: 50vh;
   transform: translate(-50%, -50%);
-  width: 60%;
   max-height: 80vh;
   max-width: 600px;
   background: #000000c4;
@@ -380,15 +398,32 @@ form {
   color: #000000;
   overflow: hidden;
   z-index: 999;
+  transition: all 300ms ease-in-out;
+}
+
+.rules-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .SubscriptionModal__Content {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: (3, 1fr);
+  justify-items: stretch;
   max-width: 400px;
   padding: 5px;
+  width: 100%;
 }
 
 .SubscriptionModal__Content button {
   color: white;
+  height: 100%;
+}
+
+.SubscriptionModal__Content button:hover {
+  height: 100%;
 }
 
 .Subscription__cost,
@@ -576,6 +611,10 @@ form {
   font-size: 14px;
 }
 
+.useful-bar .server_button.sub {
+  color: #000000
+}
+
 .colors-pallete input {
   width: 60px;
 }
@@ -597,7 +636,7 @@ form {
 
 .control-buttons {
   position: fixed;
-  bottom: 340px;
+  bottom: 250px;
   left: 15px;
   display: grid;
   grid-template-areas:
@@ -606,6 +645,11 @@ form {
   grid-template-columns: auto auto auto;
   grid-template-rows: auto auto;
   gap: 10px;
+  z-index: 999;
+}
+
+.control-buttons.nonAuth {
+  bottom: 10px;
 }
 
 .zoom-button,
@@ -784,6 +828,7 @@ form {
   padding: 8px 0px;
   font-size: 14px;
   z-index: 1;
+  font-family: monospace;
 }
 
 .exit {
@@ -867,15 +912,15 @@ form {
 .donation_content input {
   padding: 5px 0px;
   text-align: center;
-  border: none;
   border-radius: none;
   margin: 0;
   margin-bottom: 10px;
-  width: 120px;
+  font-family: monospace;
 }
 
 .donation_content .server_button {
   margin-bottom: 0px;
+  width: 100%;
 }
 
 .Coordinations__Container {}
@@ -1061,6 +1106,11 @@ form {
   color: black;
 }
 
+.LeaderBoard__user__count,
+.LeaderBoard__user__username {
+  font-family: monospace;
+}
+
 .LeaderBoard__user__username.green {
   background: #92ff325b;
 }
@@ -1078,15 +1128,17 @@ form {
 }
 
 .LeaderBoard__user__index {
+  display: flex;
   font-size: 18px;
+  align-items: center;
 }
 
 .LeaderBoard__user__count {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .LeaderBoard__user__username {
-  font-size: 16px;
+  font-size: 15px;
   word-break: break-all;
 }
 
@@ -1115,6 +1167,7 @@ form {
   justify-content: center;
   margin-top: 5px;
   flex-wrap: wrap;
+  overflow: hidden;
 }
 
 .menu__switch__buttons button {
@@ -1136,14 +1189,27 @@ form {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-left: 10px;
 }
 
 .statistics div {
-  background: #ffffff;
-  padding: 3px;
+  background: linear-gradient(0.25turn, #ffffff, #d7d7d7);
+  padding: 5px 0;
   margin: 3px 0 3px 0;
+  width: 100%;
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: monospace;
+  font-size: 15px;
 }
+
+.statistics div span{
+
+}
+
 
 .slider-container {
   width: 150px;
@@ -1610,6 +1676,69 @@ form {
   height: 30px;
 }
 
+.Context_menu-container {
+  position: absolute;
+  background-color: rgba(72, 72, 72, 0.64);
+  border: 1px solid #000;
+  z-index: 1000;
+}
+
+.Context_menu-container .colors__pallete {
+  grid-template-columns: repeat(5, 17px);
+  grid-template-rows: repeat(2, 20px);
+  color: white;
+}
+
+.Context_menu-container .color__selector {
+  width: 40px;
+  height: 40px;
+}
+
+.Context_menu-close_button {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 20px;
+  height: 20px;
+  background-color: #ff0000;
+  border-bottom: 1px solid #000;
+  border-left: 1px solid #000;
+  cursor: pointer;
+  transition: 100ms ease-in-out all;
+}
+
+.Context_menu-close_button:hover {
+  transform: scale(1.05);
+}
+
+.Context_menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.Context_menu .colors__pallete .color__selector {
+  display: none;
+}
+
+.Context_menu .colors__pallete .color__container {
+  width: 10px;
+  height: 10px;
+}
+
+.Context_menu .colors__pallete__container p {
+  color: white;
+}
+
+.undo-button {
+  background: #fe9191;
+  cursor: pointer;
+  margin: 10px 10% 0 10%;
+}
+
+.ColorBuy-button {
+  font-family: monospace;
+}
+
 @media screen and (max-width: 1000px) {
   .BattleMenuModal__container {
     width: 100%;
@@ -1784,7 +1913,7 @@ form {
   }
 
   .control-buttons {
-    bottom: 250px;
+    bottom: 200px;
   }
 
   .bottom-left-panel___container {
@@ -1798,12 +1927,13 @@ form {
 
   .colors__pallete {
     width: 100px;
+    grid-template-columns: repeat(5, 17px);
   }
 
   .color__selector {
     width: 35px;
     height: 35px;
-    margin-top: 5px;
+    margin: 0;
   }
 
   .recent__color {

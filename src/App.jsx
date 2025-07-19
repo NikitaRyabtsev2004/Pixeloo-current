@@ -2,6 +2,10 @@ import React, { useEffect, Suspense, lazy, useState } from 'react';
 import './styles/App.css';
 import './styles/loading.css';
 import './styles/PixelooIntro.css';
+import './styles/RewardsSystem.css'
+import './styles/Shop.css'
+import './styles/Chat.css'
+import './styles/ColorsPaleteDrop.css'; 
 import Logo from './components/pages/AuthPage.jsx';
 import RulesModal from './components/modal/RulesModal.jsx';
 import {

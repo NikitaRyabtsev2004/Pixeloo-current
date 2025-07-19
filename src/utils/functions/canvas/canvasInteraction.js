@@ -1,6 +1,10 @@
 import { playSoundCanvas } from '../sounds/sounds';
 import { drawPixel } from './canvasHelpers';
 
+const isValidHexColor = (color) => {
+  return /^#([0-9A-F]{3}){1,2}$/i.test(color);
+};
+
 export const applyDirtyPixels = (canvasRef, dirtyPixels) => {
   const canvas = canvasRef.current;
   if (!canvas) return;
@@ -42,7 +46,7 @@ export const handlePixelClick = (
   const adjustedX = Math.floor((x - offset.x) / (PIXEL_SIZE * scale));
   const adjustedY = Math.floor((y - offset.y) / (PIXEL_SIZE * scale));
 
-  if (!isAuthenticated || !localStorage.getItem('uniqueIdentifier')) {
+  if (!isAuthenticated || !localStorage.getItem('uniqueIdentifier') || !localStorage.getItem('authToken')) {
     showAuthenticationRequiredNotification();
     return;
   }
@@ -52,6 +56,10 @@ export const handlePixelClick = (
   }
 
   if (hoveredPixelColor === selectedColor) {
+    return;
+  }
+
+  if (!isValidHexColor(selectedColor)) {
     return;
   }
 

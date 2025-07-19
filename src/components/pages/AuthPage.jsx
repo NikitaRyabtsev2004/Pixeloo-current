@@ -45,9 +45,12 @@ const Logo = ({ colors, isAuthenticated, dispatch }) => {
     dispatch(openModal({ isSoundsOn }));
   };
 
+  const shouldShowUI = isHudOpen ?? true;
+  const shouldShowAuthModal = isAuthenticated !== true;
+
   return (
     <>
-      {isHudOpen ? (
+      {shouldShowUI && (
         <>
           <div
             className={`MainPage ${isAuthenticated ? 'authenticated' : null}`}
@@ -67,7 +70,7 @@ const Logo = ({ colors, isAuthenticated, dispatch }) => {
               ) : null}
             </div>
 
-            {!isAuthenticated && <AuthModal onClose={() => {}} />}
+            {shouldShowAuthModal && <AuthModal onClose={() => {}} />}
 
             {isAuthenticated && (
               <div className="Main_buttons">
@@ -85,7 +88,7 @@ const Logo = ({ colors, isAuthenticated, dispatch }) => {
             )}
           </div>
         </>
-      ) : null}
+      )}
     </>
   );
 };
