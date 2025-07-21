@@ -31,7 +31,16 @@ export const doPayment = async (
       coinsToAdd
     );
 
-    window.open(confirmationUrl, '_blank');
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      const newWindow = window.open(confirmationUrl, '_blank');
+      if (!newWindow) {
+        alert('Пожалуйста, разрешите всплывающие окна для перехода к оплате.');
+        window.location.href = confirmationUrl;
+      }
+    } else {
+      window.open(confirmationUrl, '_blank');
+    }
 
     await monitorPaymentStatus(
       serverUrl,
@@ -45,6 +54,7 @@ export const doPayment = async (
     );
   } catch (error) {
     showDonationMakeError();
+    console.error('Payment error:', error.message);
   }
 };
 
@@ -109,7 +119,13 @@ const monitorPaymentStatus = async (
 
       try {
         const response = await axios.get(
-          `${serverUrl}/api/check-payment/${paymentId}`
+          `${serverUrl}/api/check-payment/${paymentId}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          }
         );
         const { status, coinsToAdd: responseCoins } = response.data;
 
@@ -162,6 +178,7 @@ const monitorPaymentStatus = async (
           reject(new Error('Payment failed or timed out'));
         }
       } catch (error) {
+        console.error('Payment status check error:', error.message);
         if (attempts >= maxAttempts) {
           clearInterval(interval);
           showDonationError(

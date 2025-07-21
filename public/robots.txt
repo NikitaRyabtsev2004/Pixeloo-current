@@ -4,6 +4,9 @@ Disallow: /admin/
 Disallow: /private/
 Disallow: /cgi-bin/
 Allow: /
-Allow: /canvas-1
-Allow: /canvas-2
-Allow: /canvas-3
+Disallow: /canvas-1
+Disallow: /canvas-2
+Disallow: /canvas-3
+Disallow: /single-player-game
+Disallow: /battle/
+Disallow: /pixeloo-admin

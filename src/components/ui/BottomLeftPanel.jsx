@@ -150,7 +150,7 @@ export const ColorSelector = ({
             userColors={userColors}
           />
 
-          <h3>Ваш цвет: {selectedColor}</h3>
+          <h4 className='Curent-color'>Ваш цвет: {selectedColor}</h4>
           {/* <h3>Недавние цвета:</h3>
 
           <div className="recent__colors__container">

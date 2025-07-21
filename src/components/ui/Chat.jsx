@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useNotifications } from '../../utils/helpers/notifications';
+import { useSettings } from '../../hooks/useSettings';
+import { playSound } from '../../utils/functions/sounds/sounds';
 
 const Chat = ({ socket, isAuthenticated, uniqueIdentifier}) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -11,6 +13,7 @@ const Chat = ({ socket, isAuthenticated, uniqueIdentifier}) => {
   const messagesContainerRef = useRef(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { showAuthenticationRequiredNotification } = useNotifications();
+  const { isSoundsOn } = useSettings();
 
   const MAX_MESSAGE_LENGTH = 110;
 
@@ -85,6 +88,7 @@ const Chat = ({ socket, isAuthenticated, uniqueIdentifier}) => {
         setMessage('');
         setReplyTo(null);
         setIsAtBottom(true);
+        playSound(0.5, 'login.mp3', isSoundsOn);
       } else {
         console.error('Failed to send message:', response.message);
       }
@@ -114,11 +118,25 @@ const Chat = ({ socket, isAuthenticated, uniqueIdentifier}) => {
     }
   };
 
+  const handleChatOpen = () => {
+    if (!isChatOpen) {
+      playSound(0.5, 'to.mp3', isSoundsOn);
+    } else {
+      playSound(0.5, 'out.mp3', isSoundsOn);
+    }
+    setIsChatOpen(!isChatOpen)
+  }
+
+  const handleChatClose = () => {
+    playSound(0.5, 'out.mp3', isSoundsOn);
+    setIsChatOpen(false)
+  }
+
   return (
     <>
       <button
         className="chat-toggle-button"
-        onClick={() => setIsChatOpen(!isChatOpen)}
+        onClick={() => handleChatOpen()}
       >
         {isChatOpen ? 'Закрыть' : 'Чат'}
       </button>
@@ -129,7 +147,7 @@ const Chat = ({ socket, isAuthenticated, uniqueIdentifier}) => {
           <h2 className="chat-title">Чат</h2>
           <button
             className="chat-close-button"
-            onClick={() => setIsChatOpen(false)}
+            onClick={() => handleChatClose()}
           >
             ✕
           </button>

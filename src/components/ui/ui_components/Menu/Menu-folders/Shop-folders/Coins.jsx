@@ -38,22 +38,18 @@ const Coins = ({ setIsState, socket }) => {
   return (
     <>
       <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          marginTop: '10px',
-        }}
+        className='Coins-title'
       >
         <h4 style={{ margin: '0' }}>Купить монеты</h4>
         {coinPackages.map((pkg) => (
-          <button
+          <div
             key={pkg.coins}
-            onClick={() => handleCoinPurchase(pkg.coins, pkg.price)}
             className='Coin__boost'
           >
-            {pkg.coins} монет за {pkg.price}₽
-          </button>
+            <span>{pkg.coins} монет</span>
+            <span>Цена: {pkg.price}₽</span>
+            <button onClick={() => handleCoinPurchase(pkg.coins, pkg.price)}><span>Купить</span></button>
+          </div>
         ))}
       </div>
       <div className="menu__switch__buttons">

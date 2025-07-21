@@ -86,6 +86,7 @@ const Canvas = ({ isAuthenticated }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const socketRef = useRef(null);
+  const hasBannedRef = useRef(false);
   const [canvasWidth, setCanvasWidth] = useState(window.innerWidth);
   const [canvasHeight, setCanvasHeight] = useState(window.innerHeight);
   const [chunks, setChunks] = useState(new Map());
@@ -101,6 +102,8 @@ const Canvas = ({ isAuthenticated }) => {
     showDonationMakeError,
     showDonationSuccess,
     showDonationError,
+    showUserCanPlacePixel,
+    showUserBan,
   } = useNotifications();
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({
@@ -112,9 +115,25 @@ const Canvas = ({ isAuthenticated }) => {
   const [inputColor, setInputColor] = useState(false);
   const [coins, setCoins] = useState(0);
   const [userColors, setUserColors] = useState([]);
+  const [userAccess, setUserAccess] = useState(1);
+  const [userCanPlacePixel, setUserCanPlacePixel] = useState(1);
   const uniqueIdentifier = localStorage.getItem('uniqueIdentifier');
 
   const canvasSize = useCanvasSize();
+
+  useEffect(() => {
+    if (
+      userAccess === 0 &&
+      socketRef.current &&
+      isAuthenticated &&
+      !hasBannedRef.current
+    ) {
+      showUserBan();
+      hasBannedRef.current = true;
+      socketRef.current.disconnect();
+      setStatus('offline');
+    }
+  }, [userAccess, isAuthenticated, showUserBan]);
 
   useEffect(() => {
     const updateCanvasSize = () => {
@@ -363,6 +382,21 @@ const Canvas = ({ isAuthenticated }) => {
       setInputColor(data.isColorSubscription);
     });
 
+    socketRef.current.on('user-access', (data) => {
+      if (!isAuthenticated) return;
+      setUserAccess(data.access);
+    });
+
+    socketRef.current.on('user-canplace', (data) => {
+      if (!isAuthenticated) return;
+      setUserCanPlacePixel(data.canPlacePixel);
+    });
+
+    socketRef.current.on('user-access', (data) => {
+      if (!isAuthenticated) return;
+      setUserAccess(data.access);
+    });
+
     socketRef.current.emit('route', window.location.pathname);
     if (location.pathname === '/single-player-game' && isAuthenticated) {
       socketRef.current.emit('route', '/single-player-game');
@@ -404,6 +438,7 @@ const Canvas = ({ isAuthenticated }) => {
         socketRef.current.emit('get-color-input-sub');
         socketRef.current.emit('get-coins');
         socketRef.current.emit('get-user-colors');
+        socketRef.current.emit('get-user-access-canplace');
       }
     }, 2500);
 
@@ -505,6 +540,10 @@ const Canvas = ({ isAuthenticated }) => {
           showOutOfPixelsNotification,
           isSoundsOn,
           canvasSize,
+          userCanPlacePixel,
+          showUserCanPlacePixel,
+          userAccess,
+          showUserBan,
         });
       });
     },
@@ -658,31 +697,31 @@ const Canvas = ({ isAuthenticated }) => {
   };
 
   useEffect(() => {
-  const handleWheel = (e) => {
-    if (
-      e.target.closest('.chat-container.chat-container-open') ||
-      e.target.closest('.bottom-left-panel___container')
-    ) {
-      return;
-    }
-    if (e.deltaY < 0) {
-      handleIncreaseScale();
-    } else if (e.deltaY > 0) {
-      handleDecreaseScale();
-    }
-  };
+    const handleWheel = (e) => {
+      if (
+        e.target.closest('.chat-container.chat-container-open') ||
+        e.target.closest('.bottom-left-panel___container')
+      ) {
+        return;
+      }
+      if (e.deltaY < 0) {
+        handleIncreaseScale();
+      } else if (e.deltaY > 0) {
+        handleDecreaseScale();
+      }
+    };
 
-  const container = containerRef.current;
-  if (container) {
-    container.addEventListener('wheel', handleWheel, { passive: false });
-  }
-
-  return () => {
+    const container = containerRef.current;
     if (container) {
-      container.removeEventListener('wheel', handleWheel);
+      container.addEventListener('wheel', handleWheel, { passive: false });
     }
-  };
-}, [handleIncreaseScale, handleDecreaseScale]);
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [handleIncreaseScale, handleDecreaseScale]);
 
   return (
     <div
@@ -780,13 +819,18 @@ const Canvas = ({ isAuthenticated }) => {
         coins={coins}
         userColors={userColors}
       />
-      <Chat
-        socket={socketRef.current}
-        isAuthenticated={isAuthenticated}
-        uniqueIdentifier={uniqueIdentifier}
-        handleIncreaseScale={handleIncreaseScale}
-        handleDecreaseScale={handleDecreaseScale}
-      />
+      {isHudOpen && isAuthenticated ? (
+        <>
+          <Chat
+            socket={socketRef.current}
+            isAuthenticated={isAuthenticated}
+            uniqueIdentifier={uniqueIdentifier}
+            handleIncreaseScale={handleIncreaseScale}
+            handleDecreaseScale={handleDecreaseScale}
+          />
+        </>
+      ) : null}
+
       <div
         ref={containerRef}
         className="canvas__container"

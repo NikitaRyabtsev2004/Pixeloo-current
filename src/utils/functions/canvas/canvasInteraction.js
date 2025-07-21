@@ -41,12 +41,21 @@ export const handlePixelClick = (
     showOutOfPixelsNotification,
     isSoundsOn,
     canvasSize,
+    userCanPlacePixel,
+    showUserCanPlacePixel,
+    userAccess,
+    showUserBan,
   }
 ) => {
   const adjustedX = Math.floor((x - offset.x) / (PIXEL_SIZE * scale));
   const adjustedY = Math.floor((y - offset.y) / (PIXEL_SIZE * scale));
+  const isSinglePlayerGame = window.location.pathname === '/single-player-game';
 
-  if (!isAuthenticated || !localStorage.getItem('uniqueIdentifier') || !localStorage.getItem('authToken')) {
+  if (
+    !isAuthenticated ||
+    !localStorage.getItem('uniqueIdentifier') ||
+    !localStorage.getItem('authToken')
+  ) {
     showAuthenticationRequiredNotification();
     return;
   }
@@ -79,24 +88,32 @@ export const handlePixelClick = (
     return;
   }
 
-  const isSinglePlayerGame = window.location.pathname === '/single-player-game';
+  if (userAccess === 0 && isSinglePlayerGame) {
+    showUserBan()
+    return
+  }
+
+  if (userCanPlacePixel === 0 && !isSinglePlayerGame) {
+    showUserCanPlacePixel()
+    return;
+  }
 
   playSoundCanvas(0.2, isSoundsOn);
 
   if (!isSinglePlayerGame) {
     setCanDraw(false);
-    setRemainingTime(500);
+    setRemainingTime(440);
 
     const interval = setInterval(() => {
       setRemainingTime((prev) => {
-        if (prev <= 100) {
+        if (prev <= 40) {
           clearInterval(interval);
           setCanDraw(true);
           return 0;
         }
-        return prev - 100;
+        return prev - 40;
       });
-    }, 100);
+    }, 40);
   }
 
   const color = selectedColor;
@@ -114,7 +131,7 @@ export const handlePixelClick = (
 
   setPixels((prevPixels) => {
     if (!prevPixels[adjustedY] || !prevPixels[adjustedY][adjustedX]) {
-      return prevPixels; 
+      return prevPixels;
     }
     const newPixels = [...prevPixels];
     newPixels[adjustedY] = [...newPixels[adjustedY]];

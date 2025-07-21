@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import Square from './Square.jsx';
 import IntroLetters from './IntroLetters.jsx';
 import '../../../styles/PixelooIntro.css';
-// import { playSound } from '../../../utils/functions/sounds/sounds.js';
-// import { useSettings } from '../../../hooks/useSettings.js';
+import { playSound } from '../../../utils/functions/sounds/sounds.js';
+import { useSettings } from '../../../hooks/useSettings.js';
 
 function Intro() {
   const [isBackgroundActive, setIsBackgroundActive] = useState(false);
   const [headerClass, setHeaderClass] = useState('intro');
   const [isFading, setIsFading] = useState(false);
   const [isDisplay, setIsDisplay] = useState(true);
-  // const { isHudOpen, isSoundsOn } = useSettings();
+  const { isSoundsOn } = useSettings();
 
   useEffect(() => {
+    playSound(1, 'intro-ver-2.mp3', isSoundsOn )
     const fadeTimer = setTimeout(() => {
       setHeaderClass('intro fade');
       setIsBackgroundActive(true);

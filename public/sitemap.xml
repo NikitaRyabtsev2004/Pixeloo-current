@@ -6,22 +6,4 @@
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
-  <url>
-    <loc>https://pixeloo.ru/canvas-1</loc>
-    <lastmod>2024-12-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://pixeloo.ru/canvas-2</loc>
-    <lastmod>2024-12-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://pixeloo.ru/canvas-3</loc>
-    <lastmod>2024-12-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
 </urlset>

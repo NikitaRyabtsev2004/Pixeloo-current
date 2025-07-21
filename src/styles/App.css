@@ -126,7 +126,7 @@ h2 {
   top: calc(50% - 50px);
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 105;
+  z-index: 1000;
 }
 
 .MainPage.authenticated {
@@ -134,6 +134,7 @@ h2 {
   top: 0;
   right: 0;
   left: auto;
+  align-items: flex-end;
   transform: translateX(0);
 }
 
@@ -151,9 +152,11 @@ h2 {
   margin-bottom: 10px;
   padding: 5px;
   transition: all 300ms ease-in-out;
-  text-shadow: 0 0 0 #000000, 2px 0 0 #000000, -2px 0 0 #000000, 0 2px 0 #000000, 0 -2px 0 #000000;
-  animation: infinite ease-in-out logo-animation 5s;
-  pointer-events: none;
+  text-shadow:
+    0 0 5px rgba(0, 0, 0, 0.2),
+    0 0 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  animation: logo-animation 5s ease-in-out infinite;
 }
 
 .Logo_smile {
@@ -162,6 +165,24 @@ h2 {
   top: 32px;
   font-size: 30px;
   right: 23px;
+  transform: rotate(90deg);
+  transition: transform 0.5s ease-out;
+}
+
+.Logo:hover .Logo_smile {
+  animation: smile-spin 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+}
+
+@keyframes smile-spin {
+  0% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(270deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(450deg);
+  }
 }
 
 @keyframes logo-animation {
@@ -208,47 +229,96 @@ h2 {
   }
 }
 
-.Logo h2:nth-child(odd) {
-  transition: all 1000ms ease;
+.Logo h2 {
+  animation: gentleDomino 16s infinite;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.Logo h2:nth-child(even) {
-  transition: none;
+.Logo h2:nth-child(1) {
+  animation-delay: 0s;
 }
 
-.Logo h2:nth-child(6),
-.Logo h2:nth-child(7) {
-  animation: logo-h2-animation infinite 6s;
+.Logo h2:nth-child(2) {
+  animation-delay: 0.8s;
 }
 
-.Logo h2:nth-child(1),
-.Logo h2:nth-child(2),
-.Logo h2:nth-child(3),
+.Logo h2:nth-child(3) {
+  animation-delay: 1.6s;
+}
+
 .Logo h2:nth-child(4) {
-  animation: logo-h2-animation infinite 6s;
-  animation-delay: 3s;
+  animation-delay: 2.4s;
 }
 
+.Logo h2:nth-child(6) {
+  animation-delay: 4.8s;
+}
 
-@keyframes logo-h2-animation {
-  0% {
-    opacity: 100%;
+.Logo h2:nth-child(7) {
+  animation-delay: 5.6s;
+}
+
+.Logo h2:nth-child(5) {
+  animation: none;
+  position: relative;
+}
+
+@keyframes gentleDomino {
+
+  0%,
+  6% {
+    opacity: 0;
+    transform: translateY(-10px);
   }
 
-  25% {
-    opacity: 90%;
+  8%,
+  20% {
+    opacity: 1;
+    transform: translateY(0);
   }
 
-  50% {
-    opacity: 0%;
+  22%,
+  24% {
+    opacity: 0.3;
+    transform: translateY(2px);
   }
 
-  75% {
-    opacity: 90%;
+  26%,
+  28% {
+    opacity: 1;
+    transform: translateY(0);
   }
 
+  30%,
+  32% {
+    opacity: 0.3;
+    transform: translateY(2px);
+  }
+
+  34%,
+  36% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  38%,
+  40% {
+    opacity: 0.3;
+    transform: translateY(2px);
+  }
+
+  42%,
+  44% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  46%,
   100% {
-    opacity: 100%;
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -321,7 +391,16 @@ form {
   color: black;
   left: 0px;
   background: rgba(153, 153, 153, 0.48);
+  border: 2px solid #000000;
   width: 200px;
+  z-index: 998;
+}
+
+.bottom-left-panel___container h3 {
+  position: relative;
+  color: black;
+  left: 0px;
+  background: rgba(153, 153, 153, 0.48);
   z-index: 998;
 }
 
@@ -369,6 +448,16 @@ form {
   grid-template-columns: repeat(5, 25px);
   grid-template-rows: repeat(2, 30px);
   gap: 0px;
+}
+
+.color-container h4 {
+  font-size: 16px;
+}
+
+.Curent-color {
+  background: #ffffff;
+  padding: 5px 0;
+  font-family: monospace;
 }
 
 .color__container {
@@ -609,6 +698,7 @@ form {
   bottom: -15px;
   margin-right: 0px;
   font-size: 14px;
+  border: 2px solid #000000;
 }
 
 .useful-bar .server_button.sub {
@@ -902,7 +992,7 @@ form {
   display: flex;
   flex-direction: column;
   position: fixed;
-  width: 155px;
+  width: 154px;
   top: 0;
   right: 0;
   border: none;
@@ -912,10 +1002,11 @@ form {
 .donation_content input {
   padding: 5px 0px;
   text-align: center;
-  border-radius: none;
   margin: 0;
   margin-bottom: 10px;
+  font-size: 12px;
   font-family: monospace;
+  width: 100%;
 }
 
 .donation_content .server_button {
@@ -1060,6 +1151,7 @@ form {
 .LeaderBoard__logo,
 .Menu__logo {
   margin: 0;
+  width: 100%;
   background: #ffffff;
   border-top: #000000 solid 2px;
   border-bottom: #000000 solid 2px;
@@ -1204,10 +1296,11 @@ form {
   flex-wrap: wrap;
   font-family: monospace;
   font-size: 15px;
+  transition: all 200ms ease-in-out;
 }
 
-.statistics div span{
-
+.statistics div:hover {
+  transform: scale(1.05);
 }
 
 
@@ -1221,7 +1314,7 @@ form {
 .slider-volume {
   -webkit-appearance: none;
   /* off */
-  width: 100%;
+  width: 90%;
   height: 24px;
   background: #ddd;
   outline: none;
@@ -1232,7 +1325,6 @@ form {
 .slider-opacity::-webkit-slider-thumb,
 .slider-volume::-webkit-slider-thumb {
   -webkit-appearance: none;
-  /* off*/
   appearance: none;
   width: 20px;
   height: 20px;
@@ -1256,19 +1348,22 @@ form {
 .slider-value-1,
 .slider-value-2 {
   position: absolute;
-  top: -23px;
+  top: -18px;
   left: 0;
   transform: translateX(-100%);
   background: #4caf50;
   color: white;
-  padding: 3px 3px;
+  padding: 0px 5px;
   font-size: 14px;
   pointer-events: none;
 }
 
+.slider-value-1 {
+  top: -18px;
+}
+
 .slider-value-2 {
   top: 86px;
-  transform: translateX(-100%);
 }
 
 .slider-container h4 {
@@ -1353,6 +1448,19 @@ form {
   display: flex;
   align-items: center;
   margin-top: -60px;
+  transition: all 200ms ease-in-out;
+}
+
+.Achievement-user__info img {
+  transition: all 200ms ease-in-out;
+}
+
+.Achievement-user__info:hover {
+  transform: scale(1.1);
+}
+
+.Achievement-user__info:hover img {
+  transform: scale(1.1) translateX(10px) translateY(5px);
 }
 
 .Achievement-user__blur {
@@ -1448,8 +1556,14 @@ form {
   padding: 5px;
   margin: 5px;
   background-color: white;
+  border: 2px solid black;
   color: black;
   cursor: pointer;
+  transition: all 200ms ease-in-out;
+}
+
+.image-upload__container:hover {
+  transform: scale(1.05);
 }
 
 .User-counter__container {
@@ -1463,11 +1577,17 @@ form {
 
 .Account-data {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   overflow-y: scroll;
   max-height: 250px;
-  min-height: 200px;
   height: auto;
+  width: 100%;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.Account-data button {
+  width: 100%;
 }
 
 .Account-edit-menu {
@@ -1486,15 +1606,17 @@ form {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 5px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
 }
 
 .Account-username p,
 .Account-email p {
-  margin: 5px 0 10px 0;
-  background: #94949471;
+  margin: 0;
+  background: #f2f2f2;
   width: 100%;
-  padding: 5px;
+  padding: 5px 0;
+  height: 100%;
   word-break: break-all;
 }
 
@@ -1849,6 +1971,10 @@ form {
     font-size: 12px;
   }
 
+  .statistics div {
+    font-size: 12px;
+  }
+
   .menu__switch__buttons {
     max-height: 200px;
     overflow-y: scroll;
@@ -1876,6 +2002,10 @@ form {
     margin-bottom: 40px;
   }
 
+  .Curent-color {
+    font-size: 12px;
+  }
+
   .image-upload__container {
     font-size: 10px;
     padding: 3px;
@@ -1888,16 +2018,6 @@ form {
   .useful-bar {
     width: 80px;
     font-size: 10px;
-  }
-
-  .servers {
-    top: 40px;
-    font-size: 10px;
-    width: 50px;
-  }
-
-  .servers:hover {
-    width: 80px;
   }
 
   .zoom-button,
@@ -1942,7 +2062,7 @@ form {
   }
 
   .donation_content {
-    width: 140px;
+    width: 122px;
   }
 
   .Tg_Link {
@@ -2008,4 +2128,23 @@ form {
     padding: 10px 0px 0px 0px;
     margin: 0px;
   }
+
+  .slider-value-2 {
+    top: 105px;
+  }
+
+  .color-container h4,
+  .color-container label,
+  .color-container p {
+    font-size: 12px;
+  }
+
+  .ColorBuy-button {
+    width: 100%;
+  }
+
+  .Achievement-user__info:hover img {
+    transform: scale(1.1) translateX(7px) translateY(3px);
+  }
+
 }

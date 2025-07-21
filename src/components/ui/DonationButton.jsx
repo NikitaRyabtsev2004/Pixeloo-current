@@ -18,7 +18,7 @@ export const DonationButton = ({
   coins,
 }) => {
   const style = {
-    top: isAuthenticated ? '110px' : '10px',
+    top: isAuthenticated ? '110px' : '0px',
   };
   const { isHudOpen, isSoundsOn } = useSettings();
 

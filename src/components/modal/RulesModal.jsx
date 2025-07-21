@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { closeModal } from "../../redux/slices/rulesModalSlice";
+import { checkAutoOpen, closeModal } from "../../redux/slices/rulesModalSlice";
 import { RULES_TEXT } from "../../utils/helpers/constants";
 import { useSettings } from "../../hooks/useSettings";
 
@@ -28,12 +28,19 @@ const RulesModal = () => {
     dispatch(closeModal({isSoundsOn}));
   };
 
+  useEffect(() => {
+  const isBot = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent);
+  if (!isBot) {
+    dispatch(checkAutoOpen());
+  }
+}, [dispatch]);
+
   if (!isOpen) {
     return null; 
   }
 
   return (
-    <div className="rules-modal">
+    <div className="rules-modal" data-nosnippet>
       <h1>
         <div className="rules-modal__title">Правила:</div>
       </h1>

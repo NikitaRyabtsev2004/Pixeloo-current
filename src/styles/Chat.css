@@ -1,7 +1,7 @@
 .chat-toggle-button {
   position: fixed;
   left: 0px;
-  top: 90px;
+  top: 100px;
   background-color: #7d7090;
   color: white;
   font-size: 13px;
@@ -20,6 +20,12 @@
 }
 
 @media (max-width: 500px) {
+  .chat-toggle-button {
+    height: 30px;
+    line-height: 5px;
+    top: 90px;
+  }
+
   .chat-toggle-button:hover {
     width: 120px;
   }
