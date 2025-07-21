@@ -16,7 +16,7 @@ db.serialize(() => {
         password TEXT NOT NULL,
         confirmationCode TEXT,
         isVerified INTEGER DEFAULT 0,
-        canPlacePixel INTEGER DEFAULT 0,
+        canPlacePixel INTEGER DEFAULT 1,
         pixelCount INTEGER DEFAULT 0,
         maxPixelCount INTEGER DEFAULT 100,
         lastPixelUpdate TEXT,
@@ -37,7 +37,8 @@ db.serialize(() => {
         lastPixelY INTEGER DEFAULT NULL,
         rewardPlacedPixels INTEGER DEFAULT 0,
         rewardColorsUsed TEXT DEFAULT '',
-        boostExpirationTime TEXT
+        boostExpirationTime TEXT,
+        access INTEGER DEFAULT 1
     )`,
     () => {}
   );
@@ -594,6 +595,44 @@ db.serialize(() => {
       SET isColorSubscription = 0,
           isColorSubscriptionTime = NULL
       WHERE id = NEW.id;
+    END;
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS BanHistory (
+      userId INTEGER,
+      banStartTime TEXT,
+      banCount INTEGER DEFAULT 0,
+      PRIMARY KEY (userId),
+      FOREIGN KEY(userId) REFERENCES Users(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS handle_ban
+    AFTER UPDATE OF canPlacePixel ON Users
+    FOR EACH ROW
+    WHEN NEW.canPlacePixel = 0 AND OLD.canPlacePixel = 1
+    BEGIN
+      INSERT INTO BanHistory (userId, banStartTime, banCount)
+      VALUES (NEW.id, datetime('now', '+3 hours'), 1)
+      ON CONFLICT(userId) DO UPDATE 
+      SET banCount = banCount + 1,
+          banStartTime = datetime('now', '+3 hours');
+      UPDATE Users
+      SET access = CASE WHEN (SELECT banCount FROM BanHistory WHERE userId = NEW.id) >= 3 THEN 0 ELSE NEW.access END
+      WHERE id = NEW.id;
+    END;
+  `);
+
+  db.run(`
+    CREATE TRIGGER IF NOT EXISTS update_coins_on_pixel_placed
+    AFTER UPDATE OF placedPixels ON Users
+    WHEN NEW.placedPixels = OLD.placedPixels + 1
+    BEGIN
+        UPDATE Users 
+        SET coins = ROUND(coins + 0.2, 2) 
+        WHERE id = NEW.id;
     END;
   `);
 

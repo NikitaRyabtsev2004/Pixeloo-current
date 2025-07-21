@@ -1515,6 +1515,81 @@ function getUserColors(uniqueIdentifier, socket) {
   );
 }
 
+function getUserAccess(uniqueIdentifier, socket) {
+  db.get(
+    'SELECT access FROM Users WHERE uniqueIdentifier = ?',
+    [uniqueIdentifier],
+    (err, row) => {
+      if (err) {
+        logger.error('Ошибка при запросе maxPixelCount:', err.message);
+        return;
+      }
+
+      if (row) {
+        socket.emit('user-access', {
+          access: row.access,
+        });
+      }
+    }
+  );
+}
+
+function getCanPlacePixels(uniqueIdentifier, socket) {
+  db.get(
+    'SELECT canPlacePixel FROM Users WHERE uniqueIdentifier = ?',
+    [uniqueIdentifier],
+    (err, row) => {
+      if (err) {
+        logger.error('Ошибка при запросе maxPixelCount:', err.message);
+        return;
+      }
+
+      if (row) {
+        socket.emit('user-canplace', {
+          canPlacePixel: row.canPlacePixel,
+        });
+      }
+    }
+  );
+}
+
+function checkAndUnbanUsers(io) {
+  db.all(
+    `SELECT b.userId, b.banStartTime, u.uniqueIdentifier 
+     FROM BanHistory b 
+     JOIN Users u ON b.userId = u.id 
+     WHERE b.banStartTime IS NOT NULL 
+     AND u.canPlacePixel = 0 
+     AND u.access = 1`,
+    [],
+    (err, rows) => {
+      if (err) {
+        logger.error(`Ошибка при проверке банов: ${err.message}`);
+        return;
+      }
+
+      rows.forEach((row) => {
+        if (moment(row.banStartTime).isBefore(moment().subtract(21, 'hours'))) {
+          db.run(
+            `UPDATE Users SET canPlacePixel = 1 WHERE id = ?`,
+            [row.userId],
+            (err) => {
+              if (err) {
+                logger.error(`Ошибка при снятии бана для userId ${row.userId}: ${err.message}`);
+                return;
+              }
+              logger.info(`Бан снят для пользователя ${row.uniqueIdentifier}`);
+              io.to(`user_${row.uniqueIdentifier}`).emit('user-canplace', {
+                canPlacePixel: 1,
+              });
+            }
+          );
+        }
+      });
+    }
+  );
+}
+
 module.exports = {
   setDrawPixel,
   getUserData,
@@ -1543,4 +1618,7 @@ module.exports = {
   getUserColors,
   purchaseColor,
   addUserCoins,
+  getUserAccess,
+  getCanPlacePixels,
+  checkAndUnbanUsers,
 };

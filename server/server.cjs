@@ -32,8 +32,20 @@ const {
 moment.locale('ru');
 
 (async () => {
-  try {
-    await connectRedis();
+  await connectRedis();
+  let server = http.createServer(app);
+  let io = new Server(server, {
+    cors: {
+      origin: process.env.CLIENT_URL,
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
+  io.use(authenticateSocket);
+
+  let onlineUsers = {};
+
+  const initiateServer = (port) => {
     let server = http.createServer(app);
     let io = new Server(server, {
       cors: {
@@ -42,139 +54,104 @@ moment.locale('ru');
         credentials: true,
       },
     });
-    io.use(authenticateSocket);
+    io.use(authenticateSocket); // Применяем middleware для новых подключений
+    let pixelReplenishmentService = new PixelReplenishmentService(io);
+    pixelReplenishmentService.start();
 
-    let onlineUsers = {};
+    server.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
 
-    const initiateServer = (port) => {
-      try {
-        let server = http.createServer(app);
-        let io = new Server(server, {
-          cors: {
-            origin: process.env.CLIENT_URL,
-            methods: ['GET', 'POST'],
-            credentials: true,
-          },
-        });
-        io.use(authenticateSocket);
-        let pixelReplenishmentService = new PixelReplenishmentService(io);
-        pixelReplenishmentService.start();
+    startImageGeneration(io);
 
-        server.listen(port, () => {
-          console.log(`Server is running on port ${port}`);
-        });
+    io.on('connection', (socket) => {
+      const uniqueIdentifier =
+        socket.handshake.auth.uniqueIdentifier || 'guest';
+      const origin = socket.handshake.headers.origin;
 
-        startImageGeneration(io);
+      //* logger.info(
+      //*   `New connection attempt from origin: ${origin}, user: ${uniqueIdentifier}`
+      //* );
 
-        io.on('connection', (socket) => {
-          try {
-            const uniqueIdentifier =
-              socket.handshake.auth.uniqueIdentifier || 'guest';
-            const origin = socket.handshake.headers.origin;
-
-            if (origin !== process.env.CLIENT_URL) {
-              logger.error(
-                `Unauthorized connection attempt from origin: ${origin}`
-              );
-              socket.disconnect();
-              return;
-            }
-
-            if (!socket.user) {
-              logger.warn(
-                'socket.user was undefined after authentication, setting to guest'
-              );
-              socket.user = { isGuest: true };
-            }
-
-            if (!socket.user.isGuest) {
-              if (!onlineUsers[uniqueIdentifier]) {
-                onlineUsers[uniqueIdentifier] = [];
-              }
-              onlineUsers[uniqueIdentifier].push(socket.id);
-            }
-
-            logger.info(
-              `User Connection - User connected with ID: ${uniqueIdentifier} from IP: ${socket.handshake.address} - Total users: ${Object.keys(onlineUsers).length}, Total connections: ${getTotalConnections(onlineUsers)} - ${moment().format('LL LTS')}`
-            );
-
-            io.emit('user-count', {
-              totalUsers: Object.keys(onlineUsers).length,
-              totalConnections: getTotalConnections(onlineUsers),
-            });
-
-            socket.on('disconnect', () => {
-              try {
-                if (!socket.user.isGuest && onlineUsers[uniqueIdentifier]) {
-                  onlineUsers[uniqueIdentifier] = onlineUsers[
-                    uniqueIdentifier
-                  ].filter((id) => id !== socket.id);
-
-                  if (onlineUsers[uniqueIdentifier].length === 0) {
-                    delete onlineUsers[uniqueIdentifier];
-                  }
-
-                  logger.info(
-                    `User Disconnection - User with ID: ${uniqueIdentifier} disconnected - Total users: ${Object.keys(onlineUsers).length}, Total connections: ${getTotalConnections(onlineUsers)} - ${moment().format('LL LTS')}`
-                  );
-
-                  io.emit('user-count', {
-                    totalUsers: Object.keys(onlineUsers).length || 0,
-                    totalConnections: getTotalConnections(onlineUsers) || 0,
-                  });
-                }
-              } catch (err) {
-                logger.error(`Error in disconnect handler: ${err.message}`);
-              }
-            });
-
-            let isServerOnline = true;
-            socket.emit('server-status', { status: 'online' });
-
-            function updateServerStatus(isOnline) {
-              try {
-                isServerOnline = isOnline;
-                io.sockets.emit('server-status-update', {
-                  status: isOnline ? 'online' : 'offline',
-                });
-              } catch (err) {
-                logger.error(`Error in updateServerStatus: ${err.message}`);
-              }
-            }
-
-            setInterval(() => {
-              try {
-                if (!isServerOnline) {
-                  updateServerStatus(true);
-                }
-              } catch (err) {
-                logger.error(`Error in server status interval: ${err.message}`);
-              }
-            }, 2000);
-
-            handleServerSigintEvent(io);
-
-            handleSocketEvents(socket, io, onlineUsers);
-          } catch (err) {
-            logger.error(`Error in connection handler: ${err.message}`);
-            socket.disconnect();
-          }
-        });
-      } catch (err) {
-        logger.error(`Error initiating server on port ${port}: ${err.message}`);
+      if (origin !== process.env.CLIENT_URL) {
+        logger.error(`Unauthorized connection attempt from origin: ${origin}`);
+        socket.disconnect();
+        return;
       }
-    };
 
-    let isServerOnline = true;
+      if (!socket.user) {
+        logger.warn(
+          'socket.user was undefined after authentication, setting to guest'
+        );
+        socket.user = { isGuest: true };
+      }
 
-    initiateInterval(onlineUsers, isServerOnline, io, () =>
-      getTotalConnections(onlineUsers)
-    );
+      if (!socket.user.isGuest) {
+        if (!onlineUsers[uniqueIdentifier]) {
+          onlineUsers[uniqueIdentifier] = [];
+        }
+        onlineUsers[uniqueIdentifier].push(socket.id);
+      }
 
-    initiateServer(process.env.PORT);
-  } catch (err) {
-    logger.error(`Error in main server initialization: ${err.message}`);
-  }
+      logger.info(
+        `User Connection - User connected with ID: ${uniqueIdentifier} from IP: ${socket.handshake.address} - Total users: ${Object.keys(onlineUsers).length}, Total connections: ${getTotalConnections(onlineUsers)} - ${moment().format('LL LTS')}`
+      );
+
+      io.emit('user-count', {
+        totalUsers: Object.keys(onlineUsers).length,
+        totalConnections: getTotalConnections(onlineUsers),
+      });
+
+      socket.on('disconnect', () => {
+        if (!socket.user.isGuest && onlineUsers[uniqueIdentifier]) {
+          onlineUsers[uniqueIdentifier] = onlineUsers[uniqueIdentifier].filter(
+            (id) => id !== socket.id
+          );
+
+          if (onlineUsers[uniqueIdentifier].length === 0) {
+            delete onlineUsers[uniqueIdentifier];
+          }
+
+          logger.info(
+            `User Disconnection - User with ID: ${uniqueIdentifier} disconnected - Total users: ${Object.keys(onlineUsers).length}, Total connections: ${getTotalConnections(onlineUsers)} - ${moment().format('LL LTS')}`
+          );
+
+          io.emit('user-count', {
+            totalUsers: Object.keys(onlineUsers).length || 0,
+            totalConnections: getTotalConnections(onlineUsers) || 0,
+          });
+        }
+      });
+
+      let isServerOnline = true;
+      socket.emit('server-status', { status: 'online' });
+
+      function updateServerStatus(isOnline) {
+        isServerOnline = isOnline;
+        io.sockets.emit('server-status-update', {
+          status: isOnline ? 'online' : 'offline',
+        });
+      }
+
+      setInterval(() => {
+        if (!isServerOnline) {
+          updateServerStatus(true);
+        }
+      }, 2000);
+
+      handleServerSigintEvent(io);
+
+      handleSocketEvents(socket, io, onlineUsers);
+    });
+  };
+
+  let isServerOnline = true;
+
+  initiateInterval(onlineUsers, isServerOnline, io, () =>
+    getTotalConnections(onlineUsers)
+  );
+
+  initiateServer(process.env.PORT);
 })();
 
 handleServerEvents();
